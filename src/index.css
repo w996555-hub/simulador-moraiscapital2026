@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Poppins:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 222 20% 12%;
+    
+    --primary: 355 78% 48%;
+    --primary-deep: 350 85% 38%;
+    --primary-glow: 0 80% 60%;
+    
+    --card: 0 0% 100%;
+    --border: 220 14% 92%;
+    --radius: 1rem;
+    
+    --success: 142 65% 38%;
+    --info: 355 78% 48%;
+    
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-button: 0 4px 14px 0 rgba(204, 0, 0, 0.39);
+  }
+
+  html, body {
+    @apply font-sans bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .font-display {
+    font-family: 'Sora', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary-deep)), hsl(var(--primary)), hsl(var(--primary-glow)));
+  }
+  
+  .gradient-soft {
+    background: linear-gradient(180deg, hsl(var(--background)), hsl(0 0% 95%));
+  }
+  
+  .btn-premium {
+    @apply gradient-primary text-white font-semibold transition-all duration-300;
+    box-shadow: var(--shadow-button);
+  }
+  
+  .btn-premium:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 6px 20px rgba(204, 0, 0, 0.45);
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated;
+  }
+
+  .nice-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .nice-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .nice-scroll::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  @keyframes loading-bar {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  .animate-loading-bar {
+    animation: loading-bar 1.1s infinite linear;
+  }
+}
+
+/* PDF Export and Print Utilities */
+.pdf-only {
+  display: none !important;
+}
+
+.pdf-export-mode .pdf-only {
+  display: flex !important;
+}
+
+.pdf-export-mode .no-pdf {
+  display: none !important;
+}
+
+/* Force light theme elements on the PDF wrapper */
+.pdf-export-mode {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  width: 1024px !important;
+  min-width: 1024px !important;
+  max-width: 1024px !important;
+}
+
+.pdf-export-mode .bg-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.pdf-export-mode .text-primary {
+  color: hsl(355, 78%, 48%) !important;
+}
+
+.pdf-export-mode .bg-primary\/10 {
+  background-color: rgba(204, 0, 0, 0.08) !important;
+}
+
+.pdf-export-mode .pdf-cover {
+  margin-bottom: 0 !important;
+}
+
+.pdf-export-mode .pdf-page {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
