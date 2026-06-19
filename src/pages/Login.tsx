@@ -12,38 +12,38 @@ export default function Login({ onLogin }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
 
-  useEffect(() => {
-    const stored = localStorage.getItem('simulador_logins');
-    if (!stored) {
-      const defaultUsers = [
-        { email: 'admin@morais.com', senha: 'admin', nome: 'Administrador Morais', role: 'admin' },
-        { email: 'assessor@morais.com', senha: '123', nome: 'Assessor Morais', role: 'assessor' }
-      ];
-      localStorage.setItem('simulador_logins', JSON.stringify(defaultUsers));
-    }
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErro('');
 
     try {
-      setTimeout(() => {
-        const stored = localStorage.getItem('simulador_logins');
-        const users = stored ? JSON.parse(stored) : [];
-        const match = users.find((u: any) => u.email.toLowerCase().trim() === email.toLowerCase().trim() && u.senha === senha);
+      const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, senha })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const user = Array.isArray(data) ? data[0] : data;
         
-        if (match) {
-          sessionStorage.setItem('usuario', JSON.stringify(match));
+        if (user && user.email) {
+          sessionStorage.setItem('usuario', JSON.stringify(user));
           onLogin();
         } else {
-          setErro('E-mail ou senha inválidos.');
+          setErro('Dados de usuário inválidos retornados pelo servidor.');
           setLoading(false);
         }
-      }, 800);
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setErro(data.erro || 'E-mail ou senha inválidos.');
+        setLoading(false);
+      }
     } catch (err) {
-      setErro('Erro ao realizar o login.');
+      setErro('Erro ao se conectar ao servidor de autenticação.');
       setLoading(false);
     }
   };

@@ -753,12 +753,22 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
     }
   };
 
-  useEffect(() => {
-    // Carregar logins
-    const storedLogins = localStorage.getItem('simulador_logins');
-    if (storedLogins) {
-      setUsers(JSON.parse(storedLogins));
+  const fetchLogins = async () => {
+    try {
+      const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/listar-usuarios');
+      if (response.ok) {
+        const data = await response.json();
+        const usersList = Array.isArray(data) ? data : (data.users || []);
+        setUsers(usersList);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar logins:", err);
     }
+  };
+
+  useEffect(() => {
+    // Carregar logins da API
+    fetchLogins();
 
     // Identificar usuário logado
     const loggedIn = sessionStorage.getItem('usuario');
@@ -775,7 +785,7 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
     setVisibilidadeCampos(nextVis);
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccessMsg('');
     setErrorMsg('');
@@ -798,23 +808,35 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
       return;
     }
 
-    const newUser: UserAccount = {
-      nome: newNome.trim(),
-      email: emailLower,
-      senha: newSenha,
-      role: newRole
-    };
+    try {
+      const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/criar-usuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nome: newNome.trim(),
+          email: emailLower,
+          senha: newSenha,
+          role: newRole
+        })
+      });
 
-    const nextUsers = [...users, newUser];
-    setUsers(nextUsers);
-    localStorage.setItem('simulador_logins', JSON.stringify(nextUsers));
+      if (response.ok) {
+        setNewNome('');
+        setNewEmail('');
+        setNewSenha('');
+        setNewRole('assessor');
+        setSuccessMsg('Login cadastrado com sucesso!');
+        fetchLogins();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setErrorMsg(data.erro || 'Erro ao cadastrar usuário.');
+      }
+    } catch (err) {
+      setErrorMsg('Erro de conexão ao cadastrar usuário.');
+    }
 
-    setNewNome('');
-    setNewEmail('');
-    setNewSenha('');
-    setNewRole('assessor');
-    setSuccessMsg('Login cadastrado com sucesso!');
-    
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
@@ -826,7 +848,7 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
     setEditRole(user.role);
   };
 
-  const handleSaveEdit = (originalEmail: string) => {
+  const handleSaveEdit = async (originalEmail: string) => {
     setSuccessMsg('');
     setErrorMsg('');
 
@@ -858,35 +880,49 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
       return;
     }
 
-    const nextUsers = users.map(u => {
-      if (u.email.toLowerCase().trim() === originalLower) {
-        return {
+    try {
+      const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/editar-usuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          originalEmail: originalLower,
           nome: editNome.trim(),
           email: emailLower,
-          senha: editSenha.trim() !== '' ? editSenha.trim() : u.senha, // Se em branco, mantém a senha original
+          senha: editSenha.trim() !== '' ? editSenha.trim() : '',
           role: editRole
-        };
-      }
-      return u;
-    });
+        })
+      });
 
-    setUsers(nextUsers);
-    localStorage.setItem('simulador_logins', JSON.stringify(nextUsers));
-
-    if (originalLower === currentUserEmail.toLowerCase().trim()) {
-      const updatedUser = nextUsers.find(u => u.email.toLowerCase().trim() === emailLower);
-      if (updatedUser) {
-        sessionStorage.setItem('usuario', JSON.stringify(updatedUser));
-        setCurrentUserEmail(emailLower);
+      if (response.ok) {
+        setEditingEmail(null);
+        setSuccessMsg('Usuário atualizado com sucesso!');
+        
+        if (originalLower === currentUserEmail.toLowerCase().trim()) {
+          const loggedIn = sessionStorage.getItem('usuario');
+          if (loggedIn) {
+            const parsed = JSON.parse(loggedIn);
+            parsed.nome = editNome.trim();
+            parsed.email = emailLower;
+            parsed.role = editRole;
+            sessionStorage.setItem('usuario', JSON.stringify(parsed));
+            setCurrentUserEmail(emailLower);
+          }
+        }
+        fetchLogins();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setErrorMsg(data.erro || 'Erro ao editar usuário.');
       }
+    } catch (err) {
+      setErrorMsg('Erro de conexão ao atualizar usuário.');
     }
 
-    setEditingEmail(null);
-    setSuccessMsg('Usuário atualizado com sucesso!');
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
-  const handleDeleteUser = (emailToDelete: string) => {
+  const handleDeleteUser = async (emailToDelete: string) => {
     setSuccessMsg('');
     setErrorMsg('');
 
@@ -902,10 +938,29 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
       return;
     }
 
-    const nextUsers = users.filter(u => u.email !== emailToDelete);
-    setUsers(nextUsers);
-    localStorage.setItem('simulador_logins', JSON.stringify(nextUsers));
-    setSuccessMsg('Login removido com sucesso!');
+    if (!window.confirm(`Deseja realmente remover o login de ${emailToDelete}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/deletar-usuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: emailToDelete })
+      });
+
+      if (response.ok) {
+        setSuccessMsg('Login removido com sucesso!');
+        fetchLogins();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setErrorMsg(data.erro || 'Erro ao remover usuário.');
+      }
+    } catch (err) {
+      setErrorMsg('Erro de conexão ao deletar usuário.');
+    }
 
     setTimeout(() => setSuccessMsg(''), 4000);
   };
