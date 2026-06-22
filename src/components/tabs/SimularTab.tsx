@@ -8,7 +8,7 @@ import {
 import { NumericFormat } from 'react-number-format';
 import { formatBRL, formatPercent, formatInt } from '../../lib/format';
 import { exportElementToPdf } from '../../lib/pdf';
-import { calcular } from '../../engine/engine';
+import { calcular, calcularFinanciamento, calcularCDB } from '../../engine/engine';
 
 // Componente compartilhado: CurrencyInput
 interface CurrencyInputProps {
@@ -424,13 +424,14 @@ const renderSvgChart = (results: any, f: any, w = 800, h = 400, isScreen = false
   );
 };
 
-export default function SimularTab({ form, setForm, resultados, setResultados, loading, onSimulate, visibilidadeCampos = {} }: any) {
+export default function SimularTab({ form, setForm, resultados, setResultados, loading, onSimulate, visibilidadeCampos = {}, inputsFin, inputsCdb }: any) {
   const [view, setView] = useState<string>('form');
   const [showResults, setShowResults] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [clienteNameInput, setClienteNameInput] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
@@ -438,6 +439,63 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
   const [assessorProfile, setAssessorProfile] = React.useState<{
     photoUrl: string; phone: string; whatsapp: string; emailContato: string;
   }>({ photoUrl: '', phone: '', whatsapp: '', emailContato: '' });
+
+  // Parâmetros de fallback para Financiamento e CDB
+  const activeInputsFin = inputsFin || {
+    prazoFin: 420,
+    taxaJuros: 10.744,
+    trMensal: 0.150,
+    percentualEntrada: 20,
+    seguroMIP: 0.0116,
+    seguroDFI: 0.00827,
+    taxaAdm: 25.00,
+  };
+
+  const activeInputsCdb = inputsCdb || {
+    objetivo: 'VALOR TOTAL',
+    corrigirParcela: 'NÃO CORRIGIR',
+    rendimentoCdb: 1.0,
+    valorizacaoImovel: 6.0,
+  };
+
+  const pdfResults = resultados;
+  const cdbIsSorteio = form.tipoLance === 'SORTEIO' || form.tipoLance === 'SEM LANCE';
+  const cdbValorImovelHoje = pdfResults ? pdfResults.creditoDaCarta : 0;
+  const cdbAporteInicial = pdfResults ? pdfResults.parcelaInicial : 0;
+
+  let pdfCustoTotalConsorcio = 0;
+  let pdfCustoTotalFinanciamento = 0;
+  let pdfEconomiaConsorcio = 0;
+  let finResultados: any = {};
+  let cdbResultados: any = {};
+
+  if (pdfResults) {
+    const sumOquePaga = pdfResults.tabela
+      .filter((row: any) => row.parcela >= pdfResults.parcelaEntrada && row.parcela <= form.prazoGrupo)
+      .reduce((sum: number, row: any) => sum + row.oquePaga, 0);
+
+    const descontoVencidas = form.abateOuRatea === "DESCONTAR"
+      ? (pdfResults.parcelaEntrada - 1) * (pdfResults.tabela[pdfResults.parcelaContemplacao - 1]?.parcelaBaseFuro ?? 0)
+      : 0;
+
+    pdfCustoTotalConsorcio = sumOquePaga + descontoVencidas + pdfResults.boletoLanceLivre;
+
+    const creditoLiquidoRecebido = pdfResults.creditoDaCarta - pdfResults.boletoLanceLivre;
+    finResultados = calcularFinanciamento(creditoLiquidoRecebido, activeInputsFin);
+    pdfCustoTotalFinanciamento = finResultados.custoTotalFinanciamento || 0;
+    pdfEconomiaConsorcio = pdfCustoTotalFinanciamento - pdfCustoTotalConsorcio;
+
+    cdbResultados = calcularCDB(
+      cdbValorImovelHoje,
+      cdbAporteInicial,
+      pdfCustoTotalConsorcio,
+      form.correcaoCredito,
+      (activeInputsFin.percentualEntrada || 20) / 100,
+      pdfResults.percentualLanceTotal,
+      cdbIsSorteio,
+      activeInputsCdb
+    );
+  }
 
   React.useEffect(() => {
     const loadProfile = () => {
@@ -597,29 +655,15 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
     setShowNameModal(true);
   };
 
-  const handleConfirmPdf = async () => {
+  const handleConfirmPdf = () => {
     if (!clienteNameInput.trim()) {
-      setModalError("O nome do cliente é obrigatório para gerar o PDF.");
+      setModalError("O nome do cliente é obrigatório.");
       return;
     }
     setModalError(null);
     setShowNameModal(false);
-    
-    // Atualiza o nome do cliente no formulário
     setForm({ ...form, nomeCliente: clienteNameInput });
-    
-    setIsExporting(true);
-    // Espera a re-renderização para o nome do cliente aparecer na capa do PDF
-    setTimeout(async () => {
-      try {
-        const filename = `alavancagem-${view}.pdf`;
-        await exportElementToPdf(pdfRef.current, filename);
-      } catch (err) {
-        console.error('Erro ao exportar PDF:', err);
-      } finally {
-        setIsExporting(false);
-      }
-    }, 100);
+    setShowPdfPreview(true);
   };
 
   // ── ESTADO 1: FORMULÁRIO ───────────────────────────────────
@@ -1034,466 +1078,133 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
           className={`bg-transparent space-y-3 ${isExporting ? 'pdf-export-mode' : ''}`}
         >
           
-          {/* CAPAS DO PDF (Exclusivas para exportação) */}
-          {(() => {
-            const customPages = getCustomTemplatePages();
-            if (customPages && customPages.length > 0) {
-              const pagesJsx = customPages.map((page: any, pIdx: number) => (
-                <div 
-                  key={page.id || pIdx} 
-                  className="pdf-only pdf-cover pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none" 
-                  style={{ height: `${1024 / (page.aspectRatio || 0.707)}px` }}
-                >
-                  <div 
-                    className="relative w-full" 
-                    style={{ height: `${1024 / (page.aspectRatio || 0.707)}px` }}
-                  >
-                    <img src={page.image} alt={`Modelo Customizado Página ${pIdx + 1}`} className="w-full h-full object-fill pointer-events-none" />
-                    {page.fields?.map((field: any) => {
-                      const val = field.isCustomText 
-                        ? resolveTemplateText(field.customText || '')
-                        : getFieldValue(field.id);
-                      return (
-                        <div
-                          key={field.id}
-                          className={`absolute flex ${field.isCustomText ? 'items-start py-1' : 'items-center'}`}
-                          style={{
-                            left: `${field.left}%`,
-                            top: `${field.top}%`,
-                            width: `${field.width}%`,
-                            height: `${field.height}%`,
-                            color: field.color || '#E30613',
-                            backgroundColor: field.backgroundColor || 'transparent',
-                            justifyContent: field.align === 'center' ? 'center' : (field.align === 'right' ? 'flex-end' : 'flex-start'),
-                            padding: '0 4px',
-                          }}
-                        >
-                          {field.id === 'graficoEvolucao' ? (
-                            renderSvgChart(currentResults, form, 800, 400, false)
-                          ) : (
-                            <span 
-                              className={`font-display ${field.isCustomText ? 'whitespace-pre-wrap break-words w-full' : 'whitespace-nowrap'}`}
-                              style={{
-                                fontSize: `${field.fontSize}px`,
-                                fontWeight: field.fontWeight === 'extrabold' ? 800 : (field.fontWeight === 'bold' ? 700 : 400),
-                                lineHeight: '1.4',
-                              }}
-                            >
-                              {field.isCustomText ? parseRichText(val) : val}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+          					{/* CAPA DO PDF PADRÃO */}
+          <div className={`pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none ${showPdfPreview ? 'border-2 border-dashed border-red-500/20' : 'pdf-only'}`} style={{ height: '1448px' }}>
+            <div className="w-[50%] flex flex-col justify-between p-16 h-full z-10 text-left bg-transparent max-w-[45%]">
+              <div>
+                <img src="/png-nova-preta.png" alt="Morais Capital" className="h-10 w-auto object-contain" />
+              </div>
+              <div className="my-auto space-y-6 py-10">
+                <div className="space-y-2">
+                  <span className="font-display text-sm font-semibold tracking-[0.2em] text-[#5A5A5A] uppercase">Simulação de</span>
+                  <h1 className="font-display text-[42px] font-extrabold text-[#E30613] leading-[1.1] uppercase tracking-tight whitespace-pre-line">
+                    {group === 'fin' && "Alavancagem\nFinanceira"}
+                    {group === 'apl' && "Alavancagem\nde Aplicação"}
+                    {group === 'pat' && "Alavancagem\nPatrimonial"}
+                  </h1>
+                </div>
+                <p className="text-sm text-[#5A5A5A] font-medium leading-relaxed">
+                  {group === 'fin' && "Estratégia personalizada para alavancagem financeira."}
+                  {group === 'apl' && "Estratégia personalizada para alavancagem de aplicação."}
+                  {group === 'pat' && "Estratégia personalizada para alavancagem patrimonial."}
+                </p>
+              </div>
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 text-[#E30613] shrink-0">
+                    <User size={20} strokeWidth={1.5} />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-[#5A5A5A] font-bold tracking-wider uppercase block font-sans">Cliente</span>
+                    <span className="text-sm font-bold text-[#111111] block font-sans">{form.nomeCliente}</span>
                   </div>
                 </div>
-              ));
-
-              const hasGrafico = customPages.some((page: any) => 
-                page.fields?.some((field: any) => field.id === 'graficoEvolucao')
-              );
-
-              if (group === 'pat' && !hasGrafico) {
-                pagesJsx.push(
-                  <div key="default-page-4-appended" className="pdf-only pdf-cover pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none" style={{ height: '1448px' }}>
-                    <div className="p-16 h-full flex flex-col justify-between text-left font-sans">
-                      {/* Top Header */}
-                      <div className="space-y-4">
-                        <span className="text-sm font-bold tracking-wider text-[#E30613] font-display block">04</span>
-                        <div className="space-y-1">
-                          <h2 className="text-[28px] font-extrabold uppercase text-[#111111] leading-tight font-display tracking-tight">
-                            Evolução Patrimonial
-                          </h2>
-                          <p className="text-sm text-[#5A5A5A] font-semibold">
-                            Projeção do investimento até a contemplação.
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {/* Chart Bounding Box */}
-                      <div className="my-auto relative border border-gray-100 bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                        {/* Legend */}
-                        <div className="flex items-center gap-2 mb-6 ml-[68px]">
-                          <div className="w-8 h-[3px] bg-[#E30613] rounded-full" />
-                          <span className="text-xs font-bold text-[#1e293b]">Investimento acumulado</span>
-                        </div>
-                        
-                        {/* SVG Chart */}
-                        <div className="relative w-full h-[280px]">
-                          {renderSvgChart(currentResults, form, 800, 400, false)}
-                        </div>
-                      </div>
-                      
-                      {/* Alert block at bottom */}
-                      <div className="w-full py-4 px-6 rounded-2xl bg-red-50/55 border border-red-100/70 flex items-center gap-4 text-left">
-                        <div className="shrink-0 text-[#E30613]">
-                          <Target size={24} className="stroke-[1.75]" />
-                        </div>
-                        <p className="text-[13px] font-medium text-slate-700 leading-relaxed">
-                          A contemplação foi simulada para o <strong className="text-[#111111] font-bold">{currentResults.parcelaContemplacao}º mês</strong>, com crédito projetado de <strong className="text-[#E30613] font-bold">{fmtMoney(currentResults.creditoDaCarta)}</strong>.
-                        </p>
-                      </div>
-                      
-                      {/* Footer with separator line */}
-                      <div className="pt-6 border-t border-gray-100 w-full mt-auto flex justify-between items-center text-slate-400 font-semibold text-[10px] uppercase tracking-wider font-sans">
-                        <span>Morais Capital</span>
-                        <span className="text-slate-400 font-bold">Simulação de Alavancagem Patrimonial</span>
-                      </div>
-                    </div>
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 text-[#E30613] shrink-0">
+                    <Calendar size={20} strokeWidth={1.5} />
                   </div>
-                );
-              }
-
-              return pagesJsx;
-            } else {
-              return (
-                <>
-                  {/* CAPA DO PDF PADRÃO */}
-                  <div className="pdf-only pdf-cover pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none" style={{ height: '1448px' }}>
-                    {group === 'pat' ? (
-                      <>
-                        <img src="/capa-modelo.png" alt="Capa" className="absolute inset-0 w-full h-full object-cover" />
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '12.9%', 
-                            top: '46.9%', 
-                            width: '30%', 
-                            height: '1.7%' 
-                          }}
-                        >
-                          <span className="text-[14px] font-bold text-[#111111] font-sans">
-                            {form.nomeCliente}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '12.9%', 
-                            top: '55.9%', 
-                            width: '30%', 
-                            height: '1.7%' 
-                          }}
-                        >
-                          <span className="text-[14px] font-bold text-[#111111] font-sans">
-                            {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '12.9%', 
-                            top: '64.3%', 
-                            width: '30%', 
-                            height: '1.7%' 
-                          }}
-                        >
-                          <span className="text-[14px] font-bold text-[#111111] font-sans">
-                            {(() => {
-                              const userStr = sessionStorage.getItem('usuario');
-                              const u = userStr ? JSON.parse(userStr) : null;
-                              return u?.nome || 'Assessor Morais';
-                            })()}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-[50%] flex flex-col justify-between p-16 h-full z-10 text-left bg-transparent max-w-[45%]">
-                          <div>
-                            <img src="/png-nova-preta.png" alt="Morais Capital" className="h-10 w-auto object-contain" />
-                          </div>
-                          <div className="my-auto space-y-6 py-10">
-                            <div className="space-y-2">
-                              <span className="font-display text-sm font-semibold tracking-[0.2em] text-[#5A5A5A] uppercase">Simulação de</span>
-                              <h1 className="font-display text-[42px] font-extrabold text-[#E30613] leading-[1.1] uppercase tracking-tight whitespace-pre-line">
-                                {group === 'fin' && "Alavancagem\nFinanceira"}
-                                {group === 'apl' && "Alavancagem\nde Aplicação"}
-                              </h1>
-                            </div>
-                            <p className="text-sm text-[#5A5A5A] font-medium leading-relaxed">
-                              {group === 'fin' && "Estratégia personalizada para alavancagem financeira."}
-                              {group === 'apl' && "Estratégia personalizada para alavancagem de aplicação."}
-                            </p>
-                          </div>
-                          <div className="space-y-6">
-                            <div className="flex items-start gap-4">
-                              <div className="mt-1 text-[#E30613] shrink-0">
-                                <User size={20} strokeWidth={1.5} />
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-[#5A5A5A] font-bold tracking-wider uppercase block font-sans">Cliente</span>
-                                <span className="text-sm font-bold text-[#111111] block font-sans">{form.nomeCliente}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-4">
-                              <div className="mt-1 text-[#E30613] shrink-0">
-                                <Calendar size={20} strokeWidth={1.5} />
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-[#5A5A5A] font-bold tracking-wider uppercase block font-sans">Data da Simulação</span>
-                                <span className="text-sm font-bold text-[#111111] block font-sans">
-                                  {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-4">
-                              <div className="mt-1 text-[#E30613] shrink-0">
-                                <UserCheck size={20} strokeWidth={1.5} />
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-[#5A5A5A] font-bold tracking-wider uppercase block font-sans">Consultor Responsável</span>
-                                <span className="text-sm font-bold text-[#111111] block font-sans">
-                                  {(() => {
-                                    const userStr = sessionStorage.getItem('usuario');
-                                    const u = userStr ? JSON.parse(userStr) : null;
-                                    return u?.nome || 'Assessor Morais';
-                                  })()}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="pt-8 border-t border-border/40 w-full mt-auto">
-                            <div className="h-[2px] w-12 bg-[#E30613] mb-3" />
-                            <p className="text-[11px] italic font-medium text-[#5A5A5A] leading-relaxed">
-                              Construindo patrimônio através de estratégias inteligentes.
-                            </p>
-                          </div>
-                        </div>
-                        <div 
-                          className="absolute inset-0 bg-[#F5F6F8] z-0" 
-                          style={{ clipPath: 'polygon(49% 0, 100% 0, 100% 100%, 35% 100%)' }}
-                        />
-                        <div 
-                          className="absolute right-0 top-0 h-full w-[62%] z-0" 
-                          style={{ clipPath: 'polygon(22.5% 0, 100% 0, 100% 100%, 0 100%)' }} 
-                        >
-                          <img src="/pdf-cover-house.png" alt="House Cover" className="w-full h-full object-cover shadow-2xl" />
-                        </div>
-                      </>
-                    )}
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-[#5A5A5A] font-bold tracking-wider uppercase block font-sans">Data da Simulação</span>
+                    <span className="text-sm font-bold text-[#111111] block font-sans">
+                      {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
                   </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 text-[#E30613] shrink-0">
+                    <UserCheck size={20} strokeWidth={1.5} />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-[#5A5A5A] font-bold tracking-wider uppercase block font-sans">Consultor Responsável</span>
+                    <span className="text-sm font-bold text-[#111111] block font-sans">
+                      {(() => {
+                        const userStr = sessionStorage.getItem('usuario');
+                        const u = userStr ? JSON.parse(userStr) : null;
+                        return u?.nome || 'Assessor Morais';
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-8 border-t border-border/40 w-full mt-auto">
+                <div className="h-[2px] w-12 bg-[#E30613] mb-3" />
+                <p className="text-[11px] italic font-medium text-[#5A5A5A] leading-relaxed">
+                  Construindo patrimônio através de estratégias inteligentes.
+                </p>
+              </div>
+            </div>
+            <div 
+              className="absolute inset-0 bg-[#F5F6F8] z-0" 
+              style={{ clipPath: 'polygon(49% 0, 100% 0, 100% 100%, 35% 100%)' }}
+            />
+            <div 
+              className="absolute right-0 top-0 h-full w-[62%] z-0" 
+              style={{ clipPath: 'polygon(22.5% 0, 100% 0, 100% 100%, 0 100%)' }} 
+            >
+              <img src="/pdf-cover-house.png" alt="House Cover" className="w-full h-full object-cover shadow-2xl" />
+            </div>
+          </div>
 
-                  {/* PÁGINA 2 DO PDF PADRÃO (Apenas Alavancagem Patrimonial) */}
-                  {group === 'pat' && (
-                    <div className="pdf-only pdf-cover pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none" style={{ height: '1448px' }}>
-                      <div className="relative w-full h-[697.4px]">
-                        <img src="/pagina-2.jpg" alt="Pagina 2" className="w-full h-full object-fill" />
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '17.10%', 
-                            top: '29.74%', 
-                            width: '22.58%', 
-                            height: '4.21%' 
-                          }}
-                        >
-                          <span className="text-[23px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(form.credito)}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '63.63%', 
-                            top: '31.28%', 
-                            width: '22.74%', 
-                            height: '4.21%' 
-                          }}
-                        >
-                          <span className="text-[23px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(currentResults.desembolso)}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '17.10%', 
-                            top: '48.82%', 
-                            width: '16.25%', 
-                            height: '4.21%' 
-                          }}
-                        >
-                          <span className="text-[23px] font-extrabold text-[#E30613] font-display">
-                            {fmtInt(currentResults.parcelaContemplacao)}º mês
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-[#E30613] flex items-center" 
-                          style={{ 
-                            left: '61.57%', 
-                            top: '48.93%', 
-                            width: '19.07%', 
-                            height: '4.92%' 
-                          }}
-                        >
-                          <span className="text-[28px] font-extrabold text-white font-display">
-                            {fmtMoney(currentResults.creditoDaCarta)}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '19.15%', 
-                            top: '70.62%', 
-                            width: '16.05%', 
-                            height: '3.08%' 
-                          }}
-                        >
-                          <span className="text-[16px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(currentResults.desembolso)}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-white flex items-center" 
-                          style={{ 
-                            left: '73.83%', 
-                            top: '70.62%', 
-                            width: '16.13%', 
-                            height: '3.08%' 
-                          }}
-                        >
-                          <span className="text-[16px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(currentResults.creditoDaCarta)}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-[#F7F7F7] flex items-center" 
-                          style={{ 
-                            left: '45.16%', 
-                            top: '80.33%', 
-                            width: '16.90%', 
-                            height: '3.20%' 
-                          }}
-                        >
-                          <span className="text-[18px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(currentResults.creditoDaCarta)}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bg-[#F7F7F7] flex items-center" 
-                          style={{ 
-                            left: '51.53%', 
-                            top: '84.60%', 
-                            width: '17.06%', 
-                            height: '3.14%' 
-                          }}
-                        >
-                          <span className="text-[18px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(currentResults.desembolso)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* PÁGINA 3 DO PDF PADRÃO (Apenas Alavancagem Patrimonial) */}
-                  {group === 'pat' && (
-                    <div className="pdf-only pdf-cover pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none" style={{ height: '1448px' }}>
-                      <div className="relative w-full h-[697.4px]">
-                        <img src="/pagina-3.jpg" alt="Pagina 3" className="w-full h-full object-fill pointer-events-none" />
-                        
-                        {/* CRÉDITO */}
-                        <div className="absolute flex items-center justify-center text-center" style={{ left: '8.5%', top: '39.0%', width: '25.7%', height: '3.5%' }}>
-                          <span className="text-[19px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(form.credito)}
-                          </span>
-                        </div>
-                        
-                        {/* PRAZO */}
-                        <div className="absolute flex items-center justify-center text-center" style={{ left: '37.0%', top: '39.0%', width: '25.7%', height: '3.5%' }}>
-                          <span className="text-[19px] font-extrabold text-[#E30613] font-display">
-                            {form.prazoGrupo} meses
-                          </span>
-                        </div>
-                        
-                        {/* MEIA PARCELA */}
-                        <div className="absolute flex items-center justify-center text-center" style={{ left: '65.5%', top: '39.0%', width: '25.7%', height: '3.5%' }}>
-                          <span className="text-[19px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(currentResults.parcelaInicial)}
-                          </span>
-                        </div>
-                        
-                        {/* ATUALIZAÇÃO ANUAL */}
-                        <div className="absolute flex items-center justify-center text-center" style={{ left: '8.5%', top: '67.0%', width: '25.7%', height: '3.5%' }}>
-                          <span className="text-[19px] font-extrabold text-[#E30613] font-display">
-                            {fmtPercent(form.correcaoCredito)}
-                          </span>
-                        </div>
-                        
-                        {/* PÓS CONTEMPLAÇÃO */}
-                        <div className="absolute flex items-center justify-center text-center" style={{ left: '37.0%', top: '67.0%', width: '25.7%', height: '3.5%' }}>
-                          <span className="text-[19px] font-extrabold text-[#E30613] font-display">
-                            {fmtMoney(currentResults.parcelaPosContemplacao)}
-                          </span>
-                        </div>
-                        
-                        {/* MÊS SIMULADO */}
-                        <div className="absolute flex items-center justify-center text-center" style={{ left: '65.5%', top: '67.0%', width: '25.7%', height: '3.5%' }}>
-                          <span className="text-[19px] font-extrabold text-[#E30613] font-display">
-                            {fmtInt(currentResults.parcelaContemplacao)}º mês
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* PÁGINA 4 DO PDF PADRÃO (Apenas Alavancagem Patrimonial) */}
-                  {group === 'pat' && (() => {
-                    return (
-                      <div className="pdf-only pdf-cover pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none" style={{ height: '1448px' }}>
-                        <div className="p-16 h-full flex flex-col justify-between text-left font-sans">
-                          {/* Top Header */}
-                          <div className="space-y-4">
-                            <span className="text-sm font-bold tracking-wider text-[#E30613] font-display block">04</span>
-                            <div className="space-y-1">
-                              <h2 className="text-[28px] font-extrabold uppercase text-[#111111] leading-tight font-display tracking-tight">
-                                Evolução Patrimonial
-                              </h2>
-                              <p className="text-sm text-[#5A5A5A] font-semibold">
-                                Projeção do investimento até a contemplação.
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {/* Chart Bounding Box */}
-                          <div className="my-auto relative border border-gray-100 bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                            {/* Legend */}
-                            <div className="flex items-center gap-2 mb-6 ml-[68px]">
-                              <div className="w-8 h-[3px] bg-[#E30613] rounded-full" />
-                              <span className="text-xs font-bold text-[#1e293b]">Investimento acumulado</span>
-                            </div>
-                            
-                            {/* SVG Chart */}
-                            <div className="relative w-full h-[280px]">
-                              {renderSvgChart(currentResults, form, 800, 400, false)}
-                            </div>
-                          </div>
-                          
-                          {/* Alert block at bottom */}
-                          <div className="w-full py-4 px-6 rounded-2xl bg-red-50/55 border border-red-100/70 flex items-center gap-4 text-left">
-                            <div className="shrink-0 text-[#E30613]">
-                              <Target size={24} className="stroke-[1.75]" />
-                            </div>
-                            <p className="text-[13px] font-medium text-slate-700 leading-relaxed">
-                              A contemplação foi simulada para o <strong className="text-[#111111] font-bold">{currentResults.parcelaContemplacao}º mês</strong>, com crédito projetado de <strong className="text-[#E30613] font-bold">{fmtMoney(currentResults.creditoDaCarta)}</strong>.
-                            </p>
-                          </div>
-                          
-                          {/* Footer with separator line */}
-                          <div className="pt-6 border-t border-gray-100 w-full mt-auto flex justify-between items-center text-slate-400 font-semibold text-[10px] uppercase tracking-wider font-sans">
-                            <span>Morais Capital</span>
-                            <span className="text-slate-400 font-bold">Simulação de Alavancagem Patrimonial</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </>
-              );
-            }
-          })()}
-
+          {/* PÁGINA DO GRÁFICO (Evolução Patrimonial) */}
+          {group === 'pat' && (
+            <div className={`pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none ${showPdfPreview ? 'border-2 border-dashed border-red-500/20' : 'pdf-only'}`} style={{ height: '1448px' }}>
+              <div className="p-16 h-full flex flex-col justify-between text-left font-sans">
+                {/* Top Header */}
+                <div className="space-y-4">
+                  <span className="text-sm font-bold tracking-wider text-[#E30613] font-display block">03</span>
+                  <div className="space-y-1">
+                    <h2 className="text-[28px] font-extrabold uppercase text-[#111111] leading-tight font-display tracking-tight">
+                      Evolução Patrimonial
+                    </h2>
+                    <p className="text-sm text-[#5A5A5A] font-semibold">
+                      Projeção do investimento até a contemplação.
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Chart Bounding Box */}
+                <div className="my-auto relative border border-gray-100 bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                  {/* Legend */}
+                  <div className="flex items-center gap-2 mb-6 ml-[68px]">
+                    <div className="w-8 h-[3px] bg-[#E30613] rounded-full" />
+                    <span className="text-xs font-bold text-[#1e293b]">Investimento acumulado</span>
+                  </div>
+                  
+                  {/* SVG Chart */}
+                  <div className="relative w-full h-[280px]">
+                    {renderSvgChart(currentResults, form, 800, 400, false)}
+                  </div>
+                </div>
+                
+                {/* Alert block at bottom */}
+                <div className="w-full py-4 px-6 rounded-2xl bg-red-50/55 border border-red-100/70 flex items-center gap-4 text-left">
+                  <div className="shrink-0 text-[#E30613]">
+                    <Target size={24} className="stroke-[1.75]" />
+                  </div>
+                  <p className="text-[13px] font-medium text-slate-700 leading-relaxed">
+                    A contemplação foi simulada para o <strong className="text-[#111111] font-bold">{currentResults.parcelaContemplacao}º mês</strong>, com crédito projetado de <strong className="text-[#E30613] font-bold">{fmtMoney(currentResults.creditoDaCarta)}</strong>.
+                  </p>
+                </div>
+                
+                {/* Footer with separator line */}
+                <div className="pt-6 border-t border-gray-100 w-full mt-auto flex justify-between items-center text-slate-400 font-semibold text-[10px] uppercase tracking-wider font-sans">
+                  <span>Morais Capital</span>
+                  <span className="text-slate-400 font-bold">Simulação de Alavancagem Patrimonial</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* PÁGINA DE RESULTADOS DO PDF */}
           <div className="pdf-page w-full bg-card border border-border p-6 md:p-8 rounded-2xl shadow-card space-y-4 flex flex-col justify-between" style={{ minHeight: isExporting ? '1448px' : 'auto' }}>
             {/* Header do PDF (Exclusivo para exportação) */}
@@ -1840,6 +1551,415 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
 
           </div> {/* FIM DA PÁGINA DE RESULTADOS DO PDF */}
 
+          {/* ── PÁGINA 4 DO PDF: Comparativo de Financiamento ─────────── */}
+          <div className={`pdf-page w-full bg-white relative overflow-hidden p-16 select-none flex flex-col justify-between font-sans mb-12 ${showPdfPreview ? 'border-2 border-dashed border-red-500/20' : 'pdf-only'}`} style={{ height: '1448px' }}>
+            {/* Cabeçalho */}
+            <div className="flex justify-between items-center border-b border-gray-100 pb-4 w-full">
+              <img src="/png-nova-preta.png" alt="Morais Capital" className="h-10 w-auto object-contain" />
+              <div className="text-right flex flex-col">
+                <span className="font-display text-xs font-bold uppercase tracking-wider text-primary">Comparativo de Financiamento</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">Financiamento SAC vs Consórcio</span>
+              </div>
+            </div>
+
+            {/* Conteúdo Principal */}
+            <div className="my-auto space-y-8">
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-foreground font-display uppercase tracking-tight">Simulação Comparativa: Financiamento vs Consórcio</h3>
+                <p className="text-xs text-muted-foreground">Projeção detalhada de custos considerando taxas do financiamento bancário configuradas contra o consórcio alavancado.</p>
+              </div>
+
+              {/* Tabela de Comparação */}
+              <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.01)] bg-white">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-[#E30613] text-white">
+                      <th className="p-4 text-[10px] font-bold uppercase tracking-wider font-display w-[40%]">Métrica</th>
+                      <th className="p-4 text-[10px] font-bold uppercase tracking-wider font-display text-right w-[30%]">Financiamento SAC</th>
+                      <th className="p-4 text-[10px] font-bold uppercase tracking-wider font-display text-right w-[30%] bg-[#B50B15]">Consórcio</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-[11px] font-sans text-slate-700">
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-4 font-semibold">Valor do Imóvel</td>
+                      <td className="p-4 text-right font-semibold text-slate-900">{formatBRL(cdbValorImovelHoje)}</td>
+                      <td className="p-4 text-right font-semibold text-slate-900 bg-red-50/10">{formatBRL(cdbValorImovelHoje)}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-4 font-semibold">Entrada / Lance</td>
+                      <td className="p-4 text-right font-semibold text-slate-900">{formatBRL(finResultados.entrada)}</td>
+                      <td className="p-4 text-right font-semibold text-slate-900 bg-red-50/10">
+                        {!cdbIsSorteio && currentResults.boletoLanceLivre > 0 ? formatBRL(currentResults.boletoLanceLivre) : 'R$ 0,00'}
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-4 font-semibold">Prazo de Pagamento</td>
+                      <td className="p-4 text-right font-semibold text-slate-900">{Math.floor(activeInputsFin.prazoFin / 12)} anos ({activeInputsFin.prazoFin}m)</td>
+                      <td className="p-4 text-right font-semibold text-slate-900 bg-red-50/10">{Math.floor(form.prazoGrupo / 12)} anos ({form.prazoGrupo}m)</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-4 font-semibold">Parcela / Aporte Inicial</td>
+                      <td className="p-4 text-right font-semibold text-slate-900">{formatBRL(finResultados.parcelaInicialFin)}</td>
+                      <td className="p-4 text-right font-semibold text-slate-900 bg-red-50/10">{formatBRL(currentResults.parcelaInicial)}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-4 font-semibold">Renda p/ Aprovação (30%)</td>
+                      <td className="p-4 text-right font-semibold text-slate-900">{formatBRL(finResultados.rendaAprovacaoFin)}</td>
+                      <td className="p-4 text-right font-semibold text-slate-900 bg-red-50/10">{formatBRL(currentResults.parcelaPosContemplacao / 0.3)}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-4 font-semibold">Taxa de Juros / Correção</td>
+                      <td className="p-4 text-right font-semibold text-slate-900">{activeInputsFin.taxaJuros.toFixed(3).replace('.', ',')}% a.a. + TR</td>
+                      <td className="p-4 text-right font-semibold text-slate-900 bg-red-50/10">{formatPercent(form.correcaoCredito)} a.a. (Reajuste)</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50/50">
+                      <td className="p-4 font-semibold text-slate-500">Custo Financeiro (Juros/Taxas)</td>
+                      <td className="p-4 text-right font-medium text-slate-500">{formatBRL(finResultados.custoFinanceiroFin)}</td>
+                      <td className="p-4 text-right font-medium text-slate-500 bg-red-50/10">
+                        {formatBRL(pdfCustoTotalConsorcio - currentResults.creditoDaCarta)}
+                      </td>
+                    </tr>
+                    <tr className="bg-red-50/20 font-bold text-xs text-[#E30613]">
+                      <td className="p-4 uppercase">Custo Total Pago</td>
+                      <td className="p-4 text-right font-display text-sm text-[#E30613]">{formatBRL(pdfCustoTotalFinanciamento)}</td>
+                      <td className="p-4 text-right font-display text-sm text-[#E30613] bg-red-50/30">{formatBRL(pdfCustoTotalConsorcio)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Barra de Economia com o Consórcio */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/40 px-6 py-5 flex items-center justify-between shadow-[0_4px_20px_rgba(16,185,129,0.04)]">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-emerald-500/15 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                    <TrendingUp size={20} className="stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 font-display block">Economia Estimada com o Consórcio</span>
+                    <span className="text-xs text-slate-500 font-sans">Diferença direta no total investido nas duas modalidades</span>
+                  </div>
+                </div>
+                <span className="font-display text-3xl font-extrabold text-emerald-600">
+                  {formatBRL(pdfEconomiaConsorcio)}
+                </span>
+              </div>
+            </div>
+
+            {/* Rodapé */}
+            <div className="pt-4 border-t border-gray-100 w-full flex justify-between items-center text-slate-400 font-semibold text-[9px] uppercase tracking-wider font-sans">
+              <span>Morais Capital</span>
+              <span>Simulação de Alavancagem</span>
+            </div>
+          </div>
+
+          {/* ── PÁGINA 5 DO PDF: Comparativo de CDB ─────────────────────── */}
+          <div className="pdf-only pdf-page w-full bg-white relative overflow-hidden p-16 select-none flex flex-col justify-between font-sans" style={{ height: '1448px' }}>
+            {/* Cabeçalho */}
+            <div className="flex justify-between items-center border-b border-gray-100 pb-4 w-full">
+              <img src="/png-nova-preta.png" alt="Morais Capital" className="h-10 w-auto object-contain" />
+              <div className="text-right flex flex-col">
+                <span className="font-display text-xs font-bold uppercase tracking-wider text-primary">Comparativo de CDB</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">CDB pós-fixado vs Consórcio</span>
+              </div>
+            </div>
+
+            {/* Conteúdo Principal */}
+            <div className="my-auto space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-foreground font-display uppercase tracking-tight">Simulação Comparativa: CDB vs Consórcio</h3>
+                <p className="text-xs text-muted-foreground">Esta página analisa a estratégia de acumular capital em um CDB pós-fixado com aportes mensais para comprar o imóvel à vista no futuro, contra a aquisição via Consórcio hoje.</p>
+              </div>
+
+              {/* Tabela de Parâmetros CDB */}
+              <div className="grid grid-cols-4 gap-4 bg-slate-50 border border-slate-100 rounded-2xl p-5 text-[10px] text-slate-700 font-semibold shadow-[0_4px_10px_rgba(0,0,0,0.01)]">
+                <div className="flex flex-col">
+                  <span className="text-[8px] text-slate-400 uppercase tracking-wider block font-sans">Objetivo de Acúmulo</span>
+                  <span className="mt-1 text-slate-900 font-bold">{activeInputsCdb.objetivo === 'ENTRADA' ? 'Apenas Entrada' : 'Valor Total do Imóvel'}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[8px] text-slate-400 uppercase tracking-wider block font-sans">Rendimento do CDB</span>
+                  <span className="mt-1 text-slate-900 font-bold">{activeInputsCdb.rendimentoCdb.toFixed(2).replace('.', ',')}% a.m.</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[8px] text-slate-400 uppercase tracking-wider block font-sans">Valorização Imóvel</span>
+                  <span className="mt-1 text-slate-900 font-bold">{activeInputsCdb.valorizacaoImovel.toFixed(2).replace('.', ',')}% a.a.</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[8px] text-slate-400 uppercase tracking-wider block font-sans">Correção de Aporte</span>
+                  <span className="mt-1 text-slate-900 font-bold">{activeInputsCdb.corrigirParcela === 'CORRIGIR' ? 'Anual pelo Reajuste' : 'Sem Correção'}</span>
+                </div>
+              </div>
+
+              {/* Cards de Comparação de Custo */}
+              <div className="grid grid-cols-2 gap-6">
+                
+                {/* Poupar no CDB */}
+                <div className="border border-gray-100 rounded-3xl p-6 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.01)] flex flex-col justify-between space-y-4">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block font-sans">CDB (Poupar e Esperar)</span>
+                    <div className="h-[2px] w-6 bg-slate-200 mt-1.5 mb-3" />
+                    <h4 className="text-lg font-extrabold text-slate-950 font-display">Comprar no Futuro</h4>
+                  </div>
+                  
+                  <div className="space-y-2.5 text-[11px] font-sans text-slate-700">
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Tempo para atingir</span>
+                      <span className="font-bold text-slate-950">{cdbResultados.tempoFormatado || `${cdbResultados.mesAtingido} meses`}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Valor do Imóvel no futuro</span>
+                      <span className="font-bold text-slate-950">{formatBRL(cdbResultados.imovelCorrigido)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Aportes acumulados</span>
+                      <span className="font-bold text-slate-950">{formatBRL(cdbResultados.totalAportado)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Aluguel pago no período</span>
+                      <span className="font-bold text-slate-950">{formatBRL(cdbResultados.aluguelAcumulado)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Imposto de Renda (IR)</span>
+                      <span className="font-bold text-slate-950">{formatBRL(cdbResultados.irPago)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 font-extrabold text-[#E30613] text-xs">
+                      <span>Custo de Aquisição (Poupança + Aluguel)</span>
+                      <span className="font-display text-sm text-[#E30613]">{formatBRL(cdbResultados.custoTotalCdb)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Alavancar no Consórcio */}
+                <div className="border border-red-100 rounded-3xl p-6 bg-red-50/10 shadow-[0_4px_20px_rgba(227,6,19,0.01)] flex flex-col justify-between space-y-4">
+                  <div>
+                    <span className="text-[9px] font-bold text-primary uppercase tracking-wider block font-sans">Consórcio (Alavancagem)</span>
+                    <div className="h-[2px] w-6 bg-primary/20 mt-1.5 mb-3" />
+                    <h4 className="text-lg font-extrabold text-primary font-display">Comprar Hoje / Morar</h4>
+                  </div>
+                  
+                  <div className="space-y-2.5 text-[11px] font-sans text-slate-700">
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Tempo médio simulado</span>
+                      <span className="font-bold text-slate-950">{currentResults.parcelaContemplacao}º mês</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Crédito liberado hoje</span>
+                      <span className="font-bold text-slate-950">{formatBRL(cdbValorImovelHoje)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Parcela mensal inicial</span>
+                      <span className="font-bold text-slate-950">{formatBRL(cdbAporteInicial)}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Prazo do grupo</span>
+                      <span className="font-bold text-slate-950">{form.prazoGrupo} meses</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span>Correção do crédito</span>
+                      <span className="font-bold text-slate-950">{formatPercent(form.correcaoCredito)} a.a.</span>
+                    </div>
+                    <div className="flex justify-between pt-2 font-extrabold text-[#E30613] text-xs">
+                      <span>Custo Total do Consórcio</span>
+                      <span className="font-display text-sm text-[#E30613]">{formatBRL(pdfCustoTotalConsorcio)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nota Informativa */}
+              <p className="text-[9px] text-slate-400 leading-relaxed pl-2 font-sans border-l-2 border-slate-100">
+                * No Consórcio, a contemplação permite adquirir o imóvel imediatamente (ou na média simulada), eliminando gastos com aluguel e protegendo o capital contra a inflação imobiliária. O CDB pressupõe que o capital é mantido aplicado sem liquidez imobiliária até o acúmulo total do saldo necessário.
+              </p>
+            </div>
+
+            {/* Rodapé */}
+            <div className="pt-4 border-t border-gray-100 w-full flex justify-between items-center text-slate-400 font-semibold text-[9px] uppercase tracking-wider font-sans">
+              <span>Morais Capital</span>
+              <span>Simulação de Alavancagem</span>
+            </div>
+          </div>
+
+          {/* ── PÁGINA 6 DO PDF: Resumo Geral das 3 Colunas ─────────────── */}
+          <div className="pdf-only pdf-page w-full bg-white relative overflow-hidden p-16 select-none flex flex-col justify-between font-sans" style={{ height: '1448px' }}>
+            {/* Cabeçalho */}
+            <div className="flex justify-between items-center border-b border-gray-100 pb-4 w-full">
+              <img src="/png-nova-preta.png" alt="Morais Capital" className="h-10 w-auto object-contain" />
+              <div className="text-right flex flex-col">
+                <span className="font-display text-xs font-bold uppercase tracking-wider text-primary">Resumo Comparativo Geral</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">Visão unificada das três modalidades</span>
+              </div>
+            </div>
+
+            {/* Conteúdo Principal */}
+            <div className="my-auto space-y-8">
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-foreground font-display uppercase tracking-tight">Grade Comparativa</h3>
+                <p className="text-xs text-muted-foreground">Resumo dos custos, prazos e exigências para as três opções simuladas no sistema.</p>
+              </div>
+
+              {/* Três Colunas */}
+              <div className="grid grid-cols-3 gap-6 items-stretch">
+                
+                {/* Financiamento */}
+                <div className="border border-gray-100 bg-white rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
+                  <div>
+                    <div className="border-b border-gray-100 pb-3 mb-4">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">Financiamento SAC</span>
+                      <h4 className="text-base font-extrabold text-slate-900 mt-1 font-display">Bancário Tradicional</h4>
+                    </div>
+                    
+                    <div className="space-y-2.5 text-[9px] font-sans text-slate-600">
+                      <span className="text-[8px] font-bold text-primary uppercase block">Perfil Operacional</span>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Valor Imóvel</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(cdbValorImovelHoje)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Prazo total</span>
+                        <span className="font-semibold text-slate-900">{activeInputsFin.prazoFin} meses</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Parcela Inicial</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(finResultados.parcelaInicialFin)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Renda Mínima</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(finResultados.rendaAprovacaoFin)}</span>
+                      </div>
+
+                      <span className="text-[8px] font-bold text-primary uppercase block pt-2">Desembolsos</span>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Entrada Necessária</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(finResultados.entrada)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Juros/Taxas Totais</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(finResultados.custoFinanceiroFin)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Aluguel Pago</span>
+                        <span className="font-semibold text-slate-400">—</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-center mt-5">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Total Desembolsado</span>
+                    <span className="text-base font-extrabold text-slate-800 font-display block mt-1">{formatBRL(pdfCustoTotalFinanciamento)}</span>
+                  </div>
+                </div>
+
+                {/* Consórcio */}
+                <div className="border border-red-200 bg-red-50/5 rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_25px_rgba(227,6,19,0.02)]">
+                  <div>
+                    <div className="border-b border-red-100 pb-3 mb-4">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-wider block font-sans">Consórcio Morais</span>
+                      <h4 className="text-base font-extrabold text-primary mt-1 font-display">Alavancagem Planejada</h4>
+                    </div>
+                    
+                    <div className="space-y-2.5 text-[9px] font-sans text-slate-600">
+                      <span className="text-[8px] font-bold text-primary uppercase block">Perfil Operacional</span>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Valor Imóvel</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(cdbValorImovelHoje)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Prazo total</span>
+                        <span className="font-semibold text-slate-900">{form.prazoGrupo} meses</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Parcela Inicial</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(cdbAporteInicial)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Renda Mínima</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(currentResults.parcelaPosContemplacao / 0.3)}</span>
+                      </div>
+
+                      <span className="text-[8px] font-bold text-primary uppercase block pt-2">Desembolsos</span>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Lance / Entrada</span>
+                        <span className="font-semibold text-slate-900">
+                          {cdbIsSorteio ? 'R$ 0,00' : (currentResults.boletoLanceLivre > 0 ? formatBRL(currentResults.boletoLanceLivre) : '—')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Custo Adm/Seguro</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(pdfCustoTotalConsorcio - currentResults.creditoDaCarta)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Aluguel Pago</span>
+                        <span className="font-semibold text-slate-400">—</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-3 text-center mt-5">
+                    <span className="text-[8px] font-bold text-[#E30613] uppercase tracking-wider block font-display">Total Desembolsado</span>
+                    <span className="text-base font-extrabold text-[#E30613] font-display block mt-1">{formatBRL(pdfCustoTotalConsorcio)}</span>
+                  </div>
+                </div>
+
+                {/* CDB */}
+                <div className="border border-gray-100 bg-white rounded-3xl p-5 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.01)]">
+                  <div>
+                    <div className="border-b border-gray-100 pb-3 mb-4">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-sans">CDB Pós-Fixado</span>
+                      <h4 className="text-base font-extrabold text-slate-900 mt-1 font-display">Acúmulo de Capital</h4>
+                    </div>
+                    
+                    <div className="space-y-2.5 text-[9px] font-sans text-slate-600">
+                      <span className="text-[8px] font-bold text-primary uppercase block">Perfil Operacional</span>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Valor Imóvel</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(cdbValorImovelHoje)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Prazo (Tempo)</span>
+                        <span className="font-semibold text-slate-900">{cdbResultados.tempoFormatado || `${cdbResultados.mesAtingido}m`}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Aporte Inicial</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(cdbResultados.aporteInicial)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Renda Mínima</span>
+                        <span className="font-semibold text-slate-400">—</span>
+                      </div>
+
+                      <span className="text-[8px] font-bold text-primary uppercase block pt-2">Desembolsos</span>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Aporte Entrada</span>
+                        <span className="font-semibold text-slate-400">—</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>IR s/ Rendimentos</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(cdbResultados.irPago)}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 pb-1">
+                        <span>Aluguel Acumulado</span>
+                        <span className="font-semibold text-slate-900">{formatBRL(cdbResultados.aluguelAcumulado)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-center mt-5">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">Total Desembolsado</span>
+                    <span className="text-base font-extrabold text-slate-800 font-display block mt-1">{formatBRL(cdbResultados.custoTotalCdb)}</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Rodapé */}
+            <div className="pt-4 border-t border-gray-100 w-full flex justify-between items-center text-slate-400 font-semibold text-[9px] uppercase tracking-wider font-sans">
+              <span>Morais Capital</span>
+              <span>Simulação de Alavancagem</span>
+            </div>
+          </div>
+
+
           {/* ── PÁGINA FINAL: Citação + Cartão do Assessor ─────────────── */}
           {(() => {
             const userStr = sessionStorage.getItem('usuario');
@@ -1854,7 +1974,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
             const waLink = waNumber ? `https://wa.me/55${waNumber}` : 'https://wa.me/';
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(waLink)}`;
             return (
-              <div className="pdf-only pdf-cover pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none" style={{ height: '1448px' }}>
+              <div className={`pdf-page w-full bg-white relative overflow-hidden rounded-xl mb-12 select-none ${showPdfPreview ? 'border-2 border-dashed border-red-500/20' : 'pdf-only'}`} style={{ height: '1448px' }}>
                 {/* TOP: Mansion background with quote */}
                 <div className="relative w-full" style={{ height: '55%' }}>
                   <img

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Camera, User, Loader2 } from 'lucide-react';
 import SimularTab from '../components/tabs/SimularTab';
 import FinanciamentoTab from '../components/tabs/FinanciamentoTab';
 import CdbTab from '../components/tabs/CdbTab';
@@ -32,6 +32,71 @@ const DEFAULT_FORM: InputsConsorcio = {
 
 export default function Index({ navigateTo }: { navigateTo: (path: string) => void }) {
   const [usuario, setUsuario] = useState<any>(null);
+  const [showPerfilModal, setShowPerfilModal] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [perfilErro, setPerfilErro] = useState('');
+  const [perfilSucesso, setPerfilSucesso] = useState('');
+
+  const getInitials = (name: string) => {
+    if (!name) return 'US';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPerfilErro("A imagem deve ter menos de 5MB.");
+      return;
+    }
+
+    setUploadingFoto(true);
+    setPerfilErro('');
+    setPerfilSucesso('');
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64String = event.target?.result;
+      
+      try {
+        const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/upload-foto-perfil', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: usuario?.id,
+            foto_base64: base64String
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.foto_url) {
+            const novoUsuario = { ...usuario, foto_url: data.foto_url };
+            sessionStorage.setItem('usuario', JSON.stringify(novoUsuario));
+            localStorage.setItem('usuario', JSON.stringify(novoUsuario));
+            setUsuario(novoUsuario);
+            setPerfilSucesso("Foto de perfil atualizada com sucesso!");
+          } else {
+            setPerfilErro(data.erro || "Erro ao fazer upload da foto no servidor.");
+          }
+        } else {
+          const data = await response.json().catch(() => ({}));
+          setPerfilErro(data.erro || "Falha na resposta do servidor.");
+        }
+      } catch (err) {
+        setPerfilErro("Erro de rede ao enviar a imagem.");
+      } finally {
+        setUploadingFoto(false);
+        e.target.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
+  };
   const [activeTab, setActiveTab] = useState('simular');
   const [simularView, setSimularView] = useState('form');
   const [form, setForm] = useState(DEFAULT_FORM);
@@ -113,8 +178,38 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
               Painel ADM
             </button>
           )}
-          <span className="text-white/75 text-sm">Olá, {usuario?.nome?.split(' ')[0] || 'Assessor'}</span>
-          <button onClick={handleLogout} className="flex items-center justify-center h-9 w-9 bg-white/5 border border-white/15 rounded-full text-white">
+          
+          {/* Avatar e Nome do Usuário Logado */}
+          <button 
+            onClick={() => {
+              setPerfilErro('');
+              setPerfilSucesso('');
+              setShowPerfilModal(true);
+            }} 
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white text-left group shrink-0"
+            title="Ver Perfil"
+          >
+            {usuario?.foto_url ? (
+              <img 
+                src={usuario.foto_url} 
+                alt={usuario.nome} 
+                className="w-7 h-7 rounded-full object-cover border border-white/20 shrink-0"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center border border-white/20 text-[10px] font-bold shrink-0">
+                {usuario?.nome ? getInitials(usuario.nome) : 'US'}
+              </div>
+            )}
+            <span className="text-xs font-semibold mr-1 select-none">
+              Olá, {usuario?.nome?.split(' ')[0] || 'Assessor'}
+            </span>
+          </button>
+
+          <button 
+            onClick={handleLogout} 
+            className="flex items-center justify-center h-9 w-9 bg-white/5 border border-white/15 rounded-full text-white hover:bg-white/10 transition-colors"
+            title="Sair"
+          >
             <LogOut size={16} />
           </button>
         </div>
@@ -147,6 +242,8 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
                 loading={loading} 
                 onSimulate={executarCalculo} 
                 visibilidadeCampos={visibilidadeCampos}
+                inputsFin={inputsFin}
+                inputsCdb={inputsCdb}
               />
             )}
             {activeTab === 'financiamento' && (
@@ -183,6 +280,89 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
           </div>
         </div>
       </main>
+
+      {/* Modal de Perfil do Usuário */}
+      {showPerfilModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl shadow-elevated w-full max-w-sm p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="absolute top-0 left-0 right-0 h-[3px] gradient-primary" />
+            
+            <h3 className="text-lg font-bold font-display text-foreground mb-4">Perfil do Usuário</h3>
+            
+            <div className="flex flex-col items-center mb-6">
+              {/* Avatar circular grande */}
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full border-4 border-border bg-gray-100 overflow-hidden flex items-center justify-center shadow-sm relative group">
+                  {usuario?.foto_url ? (
+                    <img src={usuario.foto_url} alt={usuario.nome} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-500 text-xl font-bold font-display">
+                      {usuario?.nome ? getInitials(usuario.nome) : 'US'}
+                    </div>
+                  )}
+                  
+                  {/* Overlay de loading */}
+                  {uploadingFoto && (
+                    <div className="absolute inset-0 bg-black/45 flex items-center justify-center rounded-full">
+                      <Loader2 className="animate-spin text-white h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Botão de câmera para trocar foto */}
+                <label className={`absolute bottom-0 right-0 h-6 w-6 bg-primary hover:bg-primary/95 text-white rounded-full flex items-center justify-center shadow-md cursor-pointer transition-all ${uploadingFoto ? 'opacity-50 pointer-events-none' : ''}`} title="Alterar Foto">
+                  <Camera size={12} className="stroke-[2.5]" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleUploadFoto}
+                    disabled={uploadingFoto}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Informações do Usuário */}
+            <div className="space-y-4 font-sans text-sm border-t border-border/60 pt-4 mb-6">
+              <div className="grid grid-cols-[80px_1fr] items-baseline gap-2">
+                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Nome</span>
+                <span className="font-semibold text-foreground break-words">{usuario?.nome || 'Assessor'}</span>
+              </div>
+              <div className="grid grid-cols-[80px_1fr] items-baseline gap-2">
+                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">E-mail</span>
+                <span className="font-semibold text-foreground break-words">{usuario?.email || '—'}</span>
+              </div>
+              <div className="grid grid-cols-[80px_1fr] items-baseline gap-2">
+                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Função</span>
+                <span className="font-semibold text-foreground capitalize">{usuario?.role || 'assessor'}</span>
+              </div>
+            </div>
+
+            {/* Mensagens de Feedback */}
+            {perfilErro && (
+              <div className="text-xs text-red-600 font-semibold bg-red-50 py-2.5 px-3 rounded-lg border border-red-100 mb-4 animate-in fade-in duration-200 font-sans">
+                {perfilErro}
+              </div>
+            )}
+            {perfilSucesso && (
+              <div className="text-xs text-emerald-600 font-semibold bg-emerald-50 py-2.5 px-3 rounded-lg border border-emerald-100 mb-4 animate-in fade-in duration-200 font-sans">
+                {perfilSucesso}
+              </div>
+            )}
+
+            {/* Botão de Fechar */}
+            <div className="flex justify-end pt-2 border-t border-border/40">
+              <button
+                onClick={() => setShowPerfilModal(false)}
+                className="px-5 py-2 text-xs font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors font-display rounded-xl"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
