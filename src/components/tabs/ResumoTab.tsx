@@ -20,7 +20,10 @@ export default function ResumoTab({
   const valorImovelHoje = resultados.creditoDaCarta;
 
   // 1. --- CÁLCULOS DO FINANCIAMENTO ---
-  const finResultados = calcularFinanciamento(valorImovelHoje, inputsFin);
+  // BUG FIX: usar crédito líquido recebido (B70 = creditoDaCarta - boletoLance),
+  // não creditoDaCarta (B37) que inclui o lance embutido ainda não descontado.
+  const creditoLiquidoRecebido = resultados.creditoDaCarta - resultados.boletoLanceLivre;
+  const finResultados = calcularFinanciamento(creditoLiquidoRecebido, inputsFin);
   const {
     entrada: entradaFin,
     valorFinanciado,

@@ -7,7 +7,7 @@ export const formatBRL = (value: number | undefined | null) => {
 };
 
 export const formatPercent = (value: number | undefined | null) => {
-  if (value === undefined || value === null) return '0,00%';
+  if (value === undefined || value === null || isNaN(value as number)) return 'N/A';
   return new Intl.NumberFormat('pt-BR', {
     style: 'percent',
     minimumFractionDigits: 2,

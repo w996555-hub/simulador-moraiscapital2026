@@ -42,7 +42,10 @@ export default function FinanciamentoTab({
   const isSorteio = compararContra === 'SORTEIO';
 
   // Usar a engine centralizada para calcular o Financiamento
-  const finResultados = calcularFinanciamento(consorcioResultados.creditoDaCarta, inputsFin);
+  // BUG FIX: usar crédito líquido recebido (B70 = creditoDaCarta - boletoLance),
+  // não creditoDaCarta (B37) que inclui o lance embutido ainda não descontado.
+  const creditoLiquidoRecebido = consorcioResultados.creditoDaCarta - consorcioResultados.boletoLanceLivre;
+  const finResultados = calcularFinanciamento(creditoLiquidoRecebido, inputsFin);
 
   const {
     valorImovel,

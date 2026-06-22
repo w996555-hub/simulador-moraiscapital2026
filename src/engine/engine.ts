@@ -582,19 +582,28 @@ function calcularParamsBootstrap(inp: InputsConsorcio): ReturnType<typeof calcul
 // ─────────────────────────────────────────────────────────────
 
 export function irrSimples(fluxos: number[], guess = 0.01, maxIter = 1000, tol = 1e-7): number {
-  // Filtrar fluxos zerados no início
+  // BUG FIX: Remove zeros do início antes de rodar Newton-Raphson.
+  // Sem isso, 't' cresce até 280 com fluxos[t]=0, fazendo Math.pow(1+rate, t) explodir
+  // e a taxa divergir para valores absurdos (ex: 174 quatrilhões %).
+  let inicio = 0;
+  while (inicio < fluxos.length && fluxos[inicio] === 0) inicio++;
+  const f = fluxos.slice(inicio);
+  if (f.length === 0) return 0;
+
   let rate = guess;
   for (let iter = 0; iter < maxIter; iter++) {
     let npv = 0;
     let dnpv = 0;
-    for (let t = 0; t < fluxos.length; t++) {
-      if (fluxos[t] === 0) continue;
+    for (let t = 0; t < f.length; t++) {
+      if (f[t] === 0) continue;
       const disc = Math.pow(1 + rate, t);
-      npv += fluxos[t] / disc;
-      dnpv -= t * fluxos[t] / (disc * (1 + rate));
+      npv += f[t] / disc;
+      dnpv -= (t * f[t]) / (disc * (1 + rate));
     }
     if (Math.abs(dnpv) < 1e-12) break;
     const newRate = rate - npv / dnpv;
+    // Trava: se divergir, retorna NaN em vez de número absurdo
+    if (!isFinite(newRate) || Math.abs(newRate) > 100) return NaN;
     if (Math.abs(newRate - rate) < tol) return newRate;
     rate = newRate;
   }
@@ -624,23 +633,9 @@ export function calcularFinanciamento(
   const amortizacaoMensal = valorFinanciado / prazoFin;
 
   const taxaJurosMensal = (taxaJuros / 100) / 12;
-  const jurosTotais = (taxaJurosMensal * valorFinanciado * (prazoFin + 1)) / 2;
-
   const taxaTRMensal = trMensal / 100;
-  const correcaoTRTotais = (taxaTRMensal * valorFinanciado * (prazoFin + 1)) / 2;
 
-  const seguroMIPTotal = ((seguroMIP / 100) * valorFinanciado * (prazoFin + 1)) / 2;
-  const seguroDFITotal = (seguroDFI / 100) * valorImovel * prazoFin;
-  const taxaAdmTotal = taxaAdm * prazoFin;
-
-  const custoTotalFinanciamento =
-    valorImovel +
-    jurosTotais +
-    correcaoTRTotais +
-    seguroMIPTotal +
-    seguroDFITotal +
-    taxaAdmTotal;
-
+  // BUG FIX: Primeira parcela SAC usa juros NOMINAL (taxaJuros/12 + TR) — igual ao Excel B92
   const parcelaInicialFin =
     amortizacaoMensal +
     valorFinanciado * taxaJurosMensal +
@@ -649,11 +644,39 @@ export function calcularFinanciamento(
     valorFinanciado * (seguroDFI / 100) +
     taxaAdm;
 
+  // Última parcela SAC (saldo = 1 amortização)
+  const taxaEfetivaMensal = Math.pow(1 + taxaJuros / 100, 1 / 12) - 1 + taxaTRMensal;
+  const ultimaParcelaSAC =
+    amortizacaoMensal +
+    amortizacaoMensal * taxaEfetivaMensal +
+    amortizacaoMensal * ((seguroMIP + seguroDFI) / 100) +
+    taxaAdm;
+
+  // BUG FIX: Total SAC via iteração parcela-a-parcela (replica array formula B94 do Excel)
+  // A fórmula simplificada anterior usava taxa nominal e produzia valores incorretos.
+  let custoTotalFinanciamento = 0;
+  for (let k = 1; k <= prazoFin; k++) {
+    const saldoRestante = valorFinanciado - (k - 1) * amortizacaoMensal;
+    const parcela =
+      amortizacaoMensal +
+      saldoRestante * taxaEfetivaMensal +
+      saldoRestante * ((seguroMIP + seguroDFI) / 100) +
+      taxaAdm;
+    custoTotalFinanciamento += parcela;
+  }
+
+  // Para cálculo do custo financeiro (juros + TR + seguros), mantemos a referência
+  const jurosTotais = (taxaJurosMensal * valorFinanciado * (prazoFin + 1)) / 2;
+  const correcaoTRTotais = (taxaTRMensal * valorFinanciado * (prazoFin + 1)) / 2;
+  const seguroMIPTotal = ((seguroMIP / 100) * valorFinanciado * (prazoFin + 1)) / 2;
+  const seguroDFITotal = ((seguroDFI / 100) * valorFinanciado * prazoFin);
+  const taxaAdmTotal = taxaAdm * prazoFin;
+
   const rendaAprovacaoFin = parcelaInicialFin / 0.3;
   const custoFinanceiroFin = custoTotalFinanciamento - valorImovel;
 
   // PRICE
-  const ratePrice = Math.pow(1 + taxaJuros / 100, 1 / 12) - 1 + taxaTRMensal;
+  const ratePrice = taxaEfetivaMensal;
   let parcelaInicialPrice = 0;
   let totalPagoPrice = 0;
   if (ratePrice > 0) {
@@ -661,7 +684,7 @@ export function calcularFinanciamento(
       (Math.pow(1 + ratePrice, prazoFin) * ratePrice) /
       (Math.pow(1 + ratePrice, prazoFin) - 1);
     const pmPrice = valorFinanciado * factorPrice;
-    parcelaInicialPrice = pmPrice + valorFinanciado * (seguroMIP / 100 + seguroDFI / 100) + taxaAdm;
+    parcelaInicialPrice = pmPrice + valorFinanciado * ((seguroMIP + seguroDFI) / 100) + taxaAdm;
     totalPagoPrice = parcelaInicialPrice * prazoFin;
   }
 
