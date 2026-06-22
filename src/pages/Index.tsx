@@ -75,14 +75,14 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.foto_url) {
-            const novoUsuario = { ...usuario, foto_url: data.foto_url };
+          if (data.success) {
+            const novoUsuario = { ...usuario, foto_base64: base64String };
             sessionStorage.setItem('usuario', JSON.stringify(novoUsuario));
             localStorage.setItem('usuario', JSON.stringify(novoUsuario));
             setUsuario(novoUsuario);
             setPerfilSucesso("Foto de perfil atualizada com sucesso!");
           } else {
-            setPerfilErro(data.erro || "Erro ao fazer upload da foto no servidor.");
+            setPerfilErro(data.erro || "Erro ao atualizar a foto no servidor.");
           }
         } else {
           const data = await response.json().catch(() => ({}));
@@ -125,7 +125,22 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
 
   useEffect(() => {
     const userStr = sessionStorage.getItem('usuario');
-    if (userStr) setUsuario(JSON.parse(userStr));
+    if (userStr) {
+      try {
+        const userObj = JSON.parse(userStr);
+        // Na inicialização, se existir foto_base64 no localStorage, mesclar com o objeto do usuário
+        const localUserStr = localStorage.getItem('usuario');
+        if (localUserStr) {
+          const localUser = JSON.parse(localUserStr);
+          if (localUser && localUser.email === userObj.email && localUser.foto_base64) {
+            userObj.foto_base64 = localUser.foto_base64;
+          }
+        }
+        setUsuario(userObj);
+      } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
+      }
+    }
 
     const storedCampos = localStorage.getItem('simulador_campos_dados_entrada');
     if (storedCampos) {
@@ -189,9 +204,9 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
             className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white text-left group shrink-0"
             title="Ver Perfil"
           >
-            {usuario?.foto_url ? (
+            {usuario?.foto_base64 || usuario?.foto_base64 || usuario?.foto_url ? (
               <img 
-                src={usuario.foto_url} 
+                src={usuario.foto_base64 || usuario.foto_url} 
                 alt={usuario.nome} 
                 className="w-7 h-7 rounded-full object-cover border border-white/20 shrink-0"
               />
@@ -293,8 +308,8 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
               {/* Avatar circular grande */}
               <div className="relative">
                 <div className="w-20 h-20 rounded-full border-4 border-border bg-gray-100 overflow-hidden flex items-center justify-center shadow-sm relative group">
-                  {usuario?.foto_url ? (
-                    <img src={usuario.foto_url} alt={usuario.nome} className="w-full h-full object-cover" />
+                  {usuario?.foto_base64 || usuario?.foto_url ? (
+                    <img src={usuario.foto_base64 || usuario.foto_url} alt={usuario.nome} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-500 text-xl font-bold font-display">
                       {usuario?.nome ? getInitials(usuario.nome) : 'US'}
