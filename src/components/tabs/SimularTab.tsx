@@ -3,7 +3,8 @@ import {
   Loader2, RotateCcw, CheckCircle2, ChevronDown, 
   Wallet, Receipt, Calendar, Clock, PiggyBank, 
   TrendingUp, Banknote, Download, ArrowLeft, Check, 
-  DollarSign, Percent, BarChart3, User, UserCheck, Target
+  DollarSign, Percent, BarChart3, User, UserCheck, Target,
+  FileText
 } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 import { formatBRL, formatPercent, formatInt } from '../../lib/format';
@@ -428,6 +429,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
   const [view, setView] = useState<string>('form');
   const [showResults, setShowResults] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSavingProposta, setIsSavingProposta] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [clienteNameInput, setClienteNameInput] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
@@ -655,15 +657,59 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
     setShowNameModal(true);
   };
 
-  const handleConfirmPdf = () => {
+  const handleConfirmPdf = async () => {
     if (!clienteNameInput.trim()) {
-      setModalError("O nome do cliente é obrigatório.");
+      setModalError("O nome do lead é obrigatório.");
       return;
     }
     setModalError(null);
-    setShowNameModal(false);
-    setForm({ ...form, nomeCliente: clienteNameInput });
-    setShowPdfPreview(true);
+    setIsSavingProposta(true);
+
+    try {
+      const userStr = sessionStorage.getItem('usuario');
+      const u = userStr ? JSON.parse(userStr) : null;
+
+      const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/salvar-proposta', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          dados: {
+            form,
+            resultados: pdfResults,
+            inputsFin: activeInputsFin,
+            finResultados,
+            inputsCdb: activeInputsCdb,
+            cdbResultados,
+            assessor: {
+              nome: u?.nome || 'Assessor Morais',
+              email: u?.email || '',
+              foto_perfil: u?.foto_base64 || u?.foto_url || ''
+            },
+            lead: clienteNameInput,
+            data: new Date().toLocaleDateString('pt-BR')
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.id) {
+          window.open(`https://simulacao.moraiscapital.com.br/proposta/${data.id}`, '_blank');
+          setShowNameModal(false);
+        } else {
+          setModalError(data.erro || "Falha ao salvar proposta no servidor.");
+        }
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setModalError(data.erro || "Erro de rede ao salvar proposta.");
+      }
+    } catch (err) {
+      setModalError("Erro de rede ao salvar a proposta.");
+    } finally {
+      setIsSavingProposta(false);
+    }
   };
 
   // ── ESTADO 1: FORMULÁRIO ───────────────────────────────────
@@ -1063,11 +1109,11 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
         </button>
         <button 
           onClick={handleDownloadPdf}
-          disabled={isExporting}
+          disabled={isSavingProposta}
           className="bg-primary hover:bg-primary/95 text-white text-xs font-semibold uppercase tracking-wider px-5 py-2.5 rounded-full flex items-center gap-2 transition-all shadow-sm disabled:opacity-75"
         >
-          <Download size={16} /> 
-          <span>{isExporting ? "Gerando..." : "BAIXAR PDF"}</span>
+          {isSavingProposta ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />} 
+          <span>{isSavingProposta ? "Gerando..." : "GERAR PROPOSTA"}</span>
         </button>
       </div>
 
@@ -2099,12 +2145,12 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
           <div className="bg-card border border-border rounded-2xl shadow-elevated w-full max-w-md p-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="absolute top-0 left-0 right-0 h-[3px] gradient-primary" />
             
-            <h3 className="text-lg font-bold font-display text-foreground mb-1">Nome do Cliente</h3>
-            <p className="text-xs text-muted-foreground mb-4 font-sans">Insira o nome do cliente para personalizar a capa do relatório em PDF.</p>
+            <h3 className="text-lg font-bold font-display text-foreground mb-1">Gerar Proposta</h3>
+            <p className="text-xs text-muted-foreground mb-4 font-sans">Insira o nome do lead para gerar um link de simulação personalizado.</p>
             
             <input
               type="text"
-              placeholder="Nome completo do cliente"
+              placeholder="Nome completo do lead (ex: João Silva)"
               value={clienteNameInput}
               onChange={e => {
                 setClienteNameInput(e.target.value);
@@ -2112,13 +2158,14 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
               }}
               className="w-full h-11 px-3 rounded-xl border border-input bg-background text-sm font-semibold outline-none transition-all focus:ring-4 focus:ring-primary/10 focus:border-primary/50 text-foreground mb-4 font-sans"
               autoFocus
+              disabled={isSavingProposta}
               onKeyDown={e => {
                 if (e.key === 'Enter') handleConfirmPdf();
               }}
             />
             
             {modalError && (
-              <div className="text-xs text-red-600 font-semibold bg-red-50 py-2 px-3 rounded-lg border border-red-100 mb-4 animate-in fade-in duration-200 font-sans">
+              <div className="text-xs text-red-600 font-semibold bg-red-50 py-2.5 px-3 rounded-lg border border-red-100 mb-4 animate-in fade-in duration-200 font-sans">
                 {modalError}
               </div>
             )}
@@ -2126,15 +2173,18 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
             <div className="flex justify-end gap-2.5">
               <button
                 onClick={() => setShowNameModal(false)}
-                className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors font-display"
+                disabled={isSavingProposta}
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors font-display disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleConfirmPdf}
-                className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider btn-premium rounded-xl flex items-center gap-1.5 font-display"
+                disabled={isSavingProposta}
+                className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider btn-premium rounded-xl flex items-center gap-1.5 font-display disabled:opacity-75"
               >
-                Gerar PDF
+                {isSavingProposta ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                <span>{isSavingProposta ? "Gerando..." : "Gerar Proposta"}</span>
               </button>
             </div>
           </div>
