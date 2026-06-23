@@ -97,6 +97,49 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
     };
     reader.readAsDataURL(file);
   };
+
+  const handleRemoverFoto = async () => {
+    if (uploadingFoto) return;
+
+    setUploadingFoto(true);
+    setPerfilErro('');
+    setPerfilSucesso('');
+
+    try {
+      const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/upload-foto-perfil', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: usuario?.id
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          const novoUsuario = { ...usuario };
+          delete novoUsuario.foto_base64;
+          delete novoUsuario.foto_url;
+          sessionStorage.setItem('usuario', JSON.stringify(novoUsuario));
+          localStorage.setItem('usuario', JSON.stringify(novoUsuario));
+          setUsuario(novoUsuario);
+          setPerfilSucesso("Foto de perfil removida com sucesso!");
+        } else {
+          setPerfilErro(data.erro || "Erro ao remover a foto no servidor.");
+        }
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setPerfilErro(data.erro || "Falha na resposta do servidor.");
+      }
+    } catch (err) {
+      setPerfilErro("Erro de rede ao remover a imagem.");
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState('simular');
   const [simularView, setSimularView] = useState('form');
   const [form, setForm] = useState(DEFAULT_FORM);
@@ -336,6 +379,16 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
                   />
                 </label>
               </div>
+
+              {(usuario?.foto_base64 || usuario?.foto_url) && !uploadingFoto && (
+                <button
+                  type="button"
+                  onClick={handleRemoverFoto}
+                  className="mt-3 text-xs text-red-500 hover:text-red-600 hover:underline font-semibold transition-colors"
+                >
+                  Remover Foto
+                </button>
+              )}
             </div>
 
             {/* Informações do Usuário */}
