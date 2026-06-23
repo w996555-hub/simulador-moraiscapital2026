@@ -36,3 +36,5 @@ jobs:
           # Se o seu usuário FTP já estiver dentro da pasta correta, use './'.
           # Se o seu usuário FTP iniciar na raiz da hospedagem, mude para 'public_html/'.
           server-dir: ./
+          protocol: ftp
+          port: 21
