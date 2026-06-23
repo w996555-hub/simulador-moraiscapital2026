@@ -20,6 +20,7 @@ interface PropostaDados {
   };
   lead: string;
   data: string;
+  viewMode?: string;
 }
 
 export default function PropostaPage() {
@@ -104,8 +105,23 @@ export default function PropostaPage() {
     cdbResultados,
     assessor,
     lead,
-    data: dataProposta
+    data: dataProposta,
+    viewMode
   } = dadosProposta;
+
+  const getPropostaTitle = (view: string | undefined) => {
+    if (!view) return "Assessoria de Alavancagem Patrimonial";
+    if (view.startsWith('fin-')) return "Assessoria de Alavancagem Financeira";
+    if (view.startsWith('apl-')) return "Assessoria de Alavancagem de Aplicação";
+    return "Assessoria de Alavancagem Patrimonial";
+  };
+
+  const getFooterTitle = (view: string | undefined) => {
+    if (!view) return "Simulação de Alavancagem Patrimonial";
+    if (view.startsWith('fin-')) return "Simulação de Alavancagem Financeira";
+    if (view.startsWith('apl-')) return "Simulação de Alavancagem de Aplicação";
+    return "Simulação de Alavancagem Patrimonial";
+  };
 
   const sumOquePaga = resultados?.tabela
     ?.filter((row: any) => row.parcela >= resultados.parcelaEntrada && row.parcela <= form.prazoGrupo)
@@ -163,7 +179,7 @@ export default function PropostaPage() {
             </div>
             
             <h1 className="text-2xl md:text-4xl font-extrabold font-display text-[#111111] tracking-tight leading-tight">
-              Assessoria de Alavancagem Patrimonial
+              {getPropostaTitle(viewMode)}
             </h1>
             <p className="text-[#CC0000] font-semibold text-lg md:text-xl font-display">
               Proposta desenvolvida para: <span className="underline decoration-wavy decoration-[#CC0000]/30 underline-offset-4 text-[#111111] font-bold">{lead}</span>
@@ -397,7 +413,7 @@ export default function PropostaPage() {
       </main>
 
       <footer className="print-card border-t border-[#E5E5E5] py-8 px-6 text-center text-xs text-[#444444]/60 space-y-2 mt-auto">
-        <p className="font-semibold text-[#111111]/70">Simulação de Alavancagem Patrimonial gerada por Morais Capital</p>
+        <p className="font-semibold text-[#111111]/70">{getFooterTitle(viewMode)} gerada por Morais Capital</p>
         <p className="font-mono text-[10px] text-[#444444]/40">Proposta ID: {id} • Geração em {dataProposta}</p>
         <p className="font-sans text-[10px] text-[#444444]/40 no-print">
           Este documento tem caráter exclusivamente ilustrativo e comparativo com base nos dados fornecidos e condições de mercado atuais.

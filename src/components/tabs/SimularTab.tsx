@@ -657,6 +657,55 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
     setShowNameModal(true);
   };
 
+  const getActiveSimulationData = (currentView: string) => {
+    const activeResults = getResultsForView(currentView);
+    if (!activeResults) return null;
+
+    const isSorteio = currentView.endsWith('-sorteio');
+    const activeForm = {
+      ...form,
+      tipoLance: isSorteio ? 'SORTEIO' : (form.tipoLance === 'SORTEIO' ? 'FIDELIDADE' : form.tipoLance)
+    };
+
+    // Calculate Consórcio costs for this active view
+    const sumOquePaga = activeResults.tabela
+      ?.filter((row: any) => row.parcela >= activeResults.parcelaEntrada && row.parcela <= activeForm.prazoGrupo)
+      ?.reduce((sum: number, row: any) => sum + row.oquePaga, 0) || 0;
+
+    const descontoVencidas = activeForm.abateOuRatea === "DESCONTAR"
+      ? (activeResults.parcelaEntrada - 1) * (activeResults.tabela[activeResults.parcelaContemplacao - 1]?.parcelaBaseFuro ?? 0)
+      : 0;
+
+    const activeCustoTotalConsorcio = sumOquePaga + descontoVencidas + (activeResults.boletoLanceLivre || 0);
+
+    // Calculate Financiamento costs for this active view
+    const creditoLiquidoRecebido = activeResults.creditoDaCarta - (activeResults.boletoLanceLivre || 0);
+    const activeFinResultados = calcularFinanciamento(creditoLiquidoRecebido, activeInputsFin);
+
+    // Calculate CDB costs for this active view
+    const cdbIsSorteio = activeForm.tipoLance === 'SORTEIO' || activeForm.tipoLance === 'SEM LANCE';
+    const activeCdbResultados = calcularCDB(
+      activeResults.creditoDaCarta,
+      activeResults.parcelaInicial,
+      activeCustoTotalConsorcio,
+      activeForm.correcaoCredito,
+      (activeInputsFin.percentualEntrada || 20) / 100,
+      activeResults.percentualLanceTotal,
+      cdbIsSorteio,
+      activeInputsCdb
+    );
+
+    return {
+      form: activeForm,
+      resultados: activeResults,
+      inputsFin: activeInputsFin,
+      finResultados: activeFinResultados,
+      inputsCdb: activeInputsCdb,
+      cdbResultados: activeCdbResultados,
+      viewMode: currentView
+    };
+  };
+
   const handleConfirmPdf = async () => {
     if (!clienteNameInput.trim()) {
       setModalError("O nome do lead é obrigatório.");
@@ -664,6 +713,13 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
     }
     setModalError(null);
     setIsSavingProposta(true);
+
+    const activeData = getActiveSimulationData(view);
+    if (!activeData) {
+      setModalError("Nenhuma simulação ativa encontrada.");
+      setIsSavingProposta(false);
+      return;
+    }
 
     try {
       const userStr = sessionStorage.getItem('usuario');
@@ -676,12 +732,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
         },
         body: JSON.stringify({
           dados: {
-            form,
-            resultados: pdfResults,
-            inputsFin: activeInputsFin,
-            finResultados,
-            inputsCdb: activeInputsCdb,
-            cdbResultados,
+            ...activeData,
             assessor: {
               nome: u?.nome || 'Assessor Morais',
               email: u?.email || '',
