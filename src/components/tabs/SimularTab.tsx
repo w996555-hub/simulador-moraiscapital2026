@@ -878,8 +878,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                 options={[
                   { value: 'FIDELIDADE', label: 'Fidelidade' },
                   { value: 'LANCE LIVRE', label: 'Lance Livre' },
-                  { value: 'SORTEIO', label: 'Sorteio' },
-                  { value: 'SEM LANCE', label: 'Sem Lance' }
+                  { value: 'SORTEIO', label: 'Sorteio' }
                 ]} 
                 disabled={lock} 
               />
