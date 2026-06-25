@@ -33,19 +33,22 @@ export default function FinanciamentoTab({
   };
 
   // Calcular o Consórcio com base no estado "compararContra"
+  // BUG FIX: quando compararContra=LANCE, usa o tipoLance do form sem alterar.
+  // Antes forçava FIDELIDADE quando o form era SORTEIO, o que era incorreto.
   const consorcioResultados = calcular({
     ...form,
-    tipoLance: compararContra === 'SORTEIO' ? 'SORTEIO' : (form.tipoLance === 'SORTEIO' ? 'FIDELIDADE' : form.tipoLance)
+    tipoLance: compararContra === 'SORTEIO' ? 'SORTEIO' : form.tipoLance
   });
 
   // Determinar se o cenário selecionado é Sorteio
   const isSorteio = compararContra === 'SORTEIO';
 
   // Usar a engine centralizada para calcular o Financiamento
-  // BUG FIX: usar crédito líquido recebido (B70 = creditoDaCarta - boletoLance),
-  // não creditoDaCarta (B37) que inclui o lance embutido ainda não descontado.
-  const creditoLiquidoRecebido = consorcioResultados.creditoDaCarta - consorcioResultados.boletoLanceLivre;
-  const finResultados = calcularFinanciamento(creditoLiquidoRecebido, inputsFin);
+  // Base correta: creditoDaCarta (B37) = valor total da carta contemplada.
+  // No lance com embutido, o cliente recebe a carta inteira — o lance embutido
+  // é parte da própria carta usada como lance, não um desconto no imóvel.
+  // A comparação deve ser: quanto custaria financiar o MESMO imóvel (B37)?
+  const finResultados = calcularFinanciamento(consorcioResultados.creditoDaCarta, inputsFin);
 
   const {
     valorImovel,
@@ -74,6 +77,7 @@ export default function FinanciamentoTab({
     : 0;
 
   const custoTotalConsorcio = sumOquePaga + descontoVencidas + consorcioResultados.boletoLanceLivre;
+  // creditoDaCarta (B37) = valor total da carta contemplada
   const creditoLiberadoConsorcio = consorcioResultados.creditoDaCarta;
   const prazoConsorcio = form.prazoGrupo;
   const parcelaInicialConsorcio = consorcioResultados.parcelaInicial;
@@ -252,7 +256,7 @@ export default function FinanciamentoTab({
                   <span className="text-xs font-bold text-foreground/80 uppercase tracking-wider">Valor do Imóvel</span>
                 </td>
                 <td className="p-4 text-sm font-bold text-primary text-right font-display">{fmtMoney(valorImovel)}</td>
-                <td className="p-4 text-sm font-bold text-primary text-right font-display bg-primary/5">{fmtMoney(valorImovel)}</td>
+                <td className="p-4 text-sm font-bold text-primary text-right font-display bg-primary/5">{fmtMoney(creditoLiberadoConsorcio)}</td>
               </tr>
 
               {/* Linha 2: Entrada */}

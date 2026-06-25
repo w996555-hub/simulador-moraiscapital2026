@@ -187,7 +187,11 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
 
     const storedCampos = localStorage.getItem('simulador_campos_dados_entrada');
     if (storedCampos) {
-      setVisibilidadeCampos(JSON.parse(storedCampos));
+      const campos = JSON.parse(storedCampos);
+      setVisibilidadeCampos(campos);
+      if (campos['parcelasRestantes'] === false) {
+        setForm(prev => ({ ...prev, parcelasRestantes: prev.prazoGrupo }));
+      }
     }
   }, []);
 

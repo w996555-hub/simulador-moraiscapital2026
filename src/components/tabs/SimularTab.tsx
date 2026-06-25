@@ -513,7 +513,16 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
   }, []);
 
   const lock = !!resultados;
-  const handleChange = (field: string, value: any) => setForm({ ...form, [field]: value });
+  const handleChange = (field: string, value: any) => {
+    // Quando prazoGrupo muda e parcelasRestantes está oculto,
+    // sincroniza automaticamente (cliente entrando num grupo novo)
+    const parcelasOculto = visibilidadeCampos['parcelasRestantes'] === false;
+    if (field === 'prazoGrupo' && parcelasOculto) {
+      setForm({ ...form, prazoGrupo: value, parcelasRestantes: value });
+    } else {
+      setForm({ ...form, [field]: value });
+    }
+  };
 
   const isFieldVisible = (fieldId: string) => {
     return visibilidadeCampos[fieldId] !== false;
