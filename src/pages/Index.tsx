@@ -185,14 +185,25 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
       }
     }
 
+    // Carregar valores de variáveis padrão definidos pelo admin
+    const storedValores = localStorage.getItem('simulador_valores_padrao_admin');
+    let formBase = { ...DEFAULT_FORM };
+    if (storedValores) {
+      try {
+        const valores = JSON.parse(storedValores);
+        formBase = { ...formBase, ...valores };
+      } catch {}
+    }
+
     const storedCampos = localStorage.getItem('simulador_campos_dados_entrada');
     if (storedCampos) {
       const campos = JSON.parse(storedCampos);
       setVisibilidadeCampos(campos);
       if (campos['parcelasRestantes'] === false) {
-        setForm(prev => ({ ...prev, parcelasRestantes: prev.prazoGrupo }));
+        formBase.parcelasRestantes = formBase.prazoGrupo;
       }
     }
+    setForm(formBase);
   }, []);
 
   const handleLogout = () => {
@@ -203,7 +214,22 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
   const executarCalculo = (customForm?: any) => {
     setLoading(true);
     setTimeout(() => {
-      setResultados(calcular(customForm || form));
+      const baseForm = customForm || form;
+      const mergedForm = { ...baseForm };
+      
+      const storedValores = localStorage.getItem('simulador_valores_padrao_admin');
+      if (storedValores) {
+        try {
+          const valores = JSON.parse(storedValores);
+          Object.keys(visibilidadeCampos).forEach(fieldId => {
+            if (visibilidadeCampos[fieldId] === false && valores[fieldId] !== undefined) {
+              mergedForm[fieldId] = valores[fieldId];
+            }
+          });
+        } catch {}
+      }
+      
+      setResultados(calcular(mergedForm));
       setLastUpdate(new Date().toLocaleTimeString('pt-BR'));
       setLoading(false);
     }, 600);

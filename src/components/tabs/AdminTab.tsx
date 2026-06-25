@@ -217,6 +217,51 @@ const GRUPOS_CAMPOS = [
   }
 ];
 
+const VALORES_PADRAO_FALLBACK: Record<string, any> = {
+  credito: 500000,
+  taxaAdm: 0.22,
+  fundoReserva: 0.01,
+  prazoGrupo: 200,
+  correcaoCredito: 0.04,
+  parcelasRestantes: 200,
+  parcelasPagasAtéContemplar: 40,
+  meiaParcela: 'MEIA',
+  tipoSeguro: 'IMÓVEL',
+  tipoLance: 'FIDELIDADE',
+  valorLanceLivre: 0,
+  usaEmbutido: 'SIM',
+  abatimentoLance: 'REDUZIR PARCELA',
+  percentualRecompra: 0.20,
+  txInvestimentoComparativo: 0.0085,
+  retornoAluguelMes: 0.005,
+  correcaoImovelAno: 0.06,
+};
+
+const getSelectOptions = (id: string) => {
+  if (id === 'meiaParcela') return [
+    { value: 'MEIA', label: 'Meia' },
+    { value: 'INTEGRAL', label: 'Integral' }
+  ];
+  if (id === 'tipoSeguro') return [
+    { value: 'IMÓVEL', label: 'Imóvel' },
+    { value: 'VEÍCULO', label: 'Veículo' },
+    { value: 'NENHUM', label: 'Nenhum' }
+  ];
+  if (id === 'tipoLance') return [
+    { value: 'FIDELIDADE', label: 'Fidelidade' },
+    { value: 'LANCE LIVRE', label: 'Lance Livre' }
+  ];
+  if (id === 'usaEmbutido') return [
+    { value: 'SIM', label: 'Sim' },
+    { value: 'NÃO', label: 'Não' }
+  ];
+  if (id === 'abatimentoLance') return [
+    { value: 'REDUZIR PARCELA', label: 'Reduzir Parcela' },
+    { value: 'REDUZIR PRAZO', label: 'Reduzir Prazo' }
+  ];
+  return [];
+};
+
 export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: AdminTabProps) {
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
@@ -240,6 +285,8 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
 
   // Subtabs state
   const [subtab, setSubtab] = useState<'acessos' | 'modelos'>('acessos');
+
+  const [valoresCampos, setValoresCampos] = useState<Record<string, any>>({});
 
 
   // PDF Model Editor state
@@ -769,6 +816,13 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
     // Carregar logins da API
     fetchLogins();
 
+    const storedValores = localStorage.getItem('simulador_valores_padrao_admin');
+    if (storedValores) {
+      try {
+        setValoresCampos(JSON.parse(storedValores));
+      } catch {}
+    }
+
     // Identificar usuário logado
     const loggedIn = sessionStorage.getItem('usuario');
     if (loggedIn) {
@@ -1012,23 +1066,82 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {grupo.campos.map((campo) => {
                         const isVisible = visibilidadeCampos[campo.id] !== false;
+                        const value = valoresCampos[campo.id] !== undefined ? valoresCampos[campo.id] : VALORES_PADRAO_FALLBACK[campo.id];
+                        const isDecimalField = ['taxaAdm', 'fundoReserva', 'correcaoCredito', 'percentualRecompra', 'txInvestimentoComparativo', 'retornoAluguelMes', 'correcaoImovelAno'].includes(campo.id);
+                        const isSelectField = ['meiaParcela', 'tipoSeguro', 'tipoLance', 'usaEmbutido', 'abatimentoLance'].includes(campo.id);
+
+                        const handleValueChange = (newVal: any) => {
+                          const updatedValores = { ...valoresCampos, [campo.id]: newVal };
+                          setValoresCampos(updatedValores);
+                          localStorage.setItem('simulador_valores_padrao_admin', JSON.stringify(updatedValores));
+                        };
+
                         return (
                           <div 
                             key={campo.id} 
-                            className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+                            className="flex flex-col gap-2 p-3.5 rounded-xl border border-gray-100 bg-gray-50/30 hover:bg-gray-50 transition-colors"
                           >
-                            <span className="text-xs font-semibold text-gray-700">{campo.label}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleField(campo.id)}
-                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                isVisible ? 'bg-primary' : 'bg-gray-200'
-                              }`}
-                            >
-                              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                isVisible ? 'translate-x-5' : 'translate-x-0'
-                              }`} />
-                            </button>
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-xs font-bold text-gray-700">{campo.label}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleField(campo.id)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                  isVisible ? 'bg-primary' : 'bg-gray-200'
+                                }`}
+                              >
+                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  isVisible ? 'translate-x-5' : 'translate-x-0'
+                                }`} />
+                              </button>
+                            </div>
+
+                            <div className="w-full pt-2 border-t border-gray-100 flex items-center justify-between gap-3">
+                              <span className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground font-sans">Valor Padrão:</span>
+                              {isSelectField ? (
+                                <select
+                                  value={value}
+                                  onChange={(e) => handleValueChange(e.target.value)}
+                                  className="h-8 px-2 rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                >
+                                  {getSelectOptions(campo.id).map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              ) : isDecimalField ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={Number((value * 100).toFixed(4))}
+                                    onChange={(e) => {
+                                      const val = Number(e.target.value);
+                                      handleValueChange(val / 100);
+                                    }}
+                                    className="w-24 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                  />
+                                  <span className="text-[10px] font-bold text-muted-foreground">%</span>
+                                </div>
+                              ) : campo.id === 'credito' || campo.id === 'valorLanceLivre' ? (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] font-bold text-muted-foreground">R$</span>
+                                  <input
+                                    type="number"
+                                    step="1000"
+                                    value={value}
+                                    onChange={(e) => handleValueChange(Number(e.target.value))}
+                                    className="w-28 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                  />
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  value={value}
+                                  onChange={(e) => handleValueChange(Number(e.target.value))}
+                                  className="w-20 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                />
+                              )}
+                            </div>
                           </div>
                         );
                       })}

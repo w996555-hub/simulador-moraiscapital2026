@@ -560,9 +560,23 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
   const getResultsForView = (currentView: string) => {
     if (!resultados) return null;
     const isSorteio = currentView.endsWith('-sorteio');
+
+    const mergedForm = { ...form };
+    const storedValores = localStorage.getItem('simulador_valores_padrao_admin');
+    if (storedValores) {
+      try {
+        const valores = JSON.parse(storedValores);
+        Object.keys(visibilidadeCampos).forEach(fieldId => {
+          if (visibilidadeCampos[fieldId] === false && valores[fieldId] !== undefined) {
+            mergedForm[fieldId] = valores[fieldId];
+          }
+        });
+      } catch {}
+    }
+
     return calcular({
-      ...form,
-      tipoLance: isSorteio ? 'SORTEIO' : (form.tipoLance === 'SORTEIO' ? 'FIDELIDADE' : form.tipoLance)
+      ...mergedForm,
+      tipoLance: isSorteio ? 'SORTEIO' : (mergedForm.tipoLance === 'SORTEIO' ? 'FIDELIDADE' : mergedForm.tipoLance)
     });
   };
 
@@ -671,9 +685,23 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
     if (!activeResults) return null;
 
     const isSorteio = currentView.endsWith('-sorteio');
+    
+    const mergedForm = { ...form };
+    const storedValores = localStorage.getItem('simulador_valores_padrao_admin');
+    if (storedValores) {
+      try {
+        const valores = JSON.parse(storedValores);
+        Object.keys(visibilidadeCampos).forEach(fieldId => {
+          if (visibilidadeCampos[fieldId] === false && valores[fieldId] !== undefined) {
+            mergedForm[fieldId] = valores[fieldId];
+          }
+        });
+      } catch {}
+    }
+
     const activeForm = {
-      ...form,
-      tipoLance: isSorteio ? 'SORTEIO' : (form.tipoLance === 'SORTEIO' ? 'FIDELIDADE' : form.tipoLance)
+      ...mergedForm,
+      tipoLance: isSorteio ? 'SORTEIO' : (mergedForm.tipoLance === 'SORTEIO' ? 'FIDELIDADE' : mergedForm.tipoLance)
     };
 
     // Calculate Consórcio costs for this active view
@@ -1050,7 +1078,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                 </div>
                 <div className="space-y-2">
                   <OptionButton label="Sorteio" onClick={() => setView('pat-sorteio')} />
-                  <OptionButton label="Fixo" onClick={() => setView('pat-lance')} />
+                  <OptionButton label="Lance" onClick={() => setView('pat-lance')} />
                 </div>
               </div>
 
@@ -1062,7 +1090,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                 </div>
                 <div className="space-y-2">
                   <OptionButton label="Sorteio" onClick={() => setView('fin-sorteio')} />
-                  <OptionButton label="Fixo" onClick={() => setView('fin-lance')} />
+                  <OptionButton label="Lance" onClick={() => setView('fin-lance')} />
                 </div>
               </div>
 
@@ -1074,7 +1102,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                 </div>
                 <div className="space-y-2">
                   <OptionButton label="Sorteio" onClick={() => setView('apl-sorteio')} />
-                  <OptionButton label="Fixo" onClick={() => setView('apl-lance')} />
+                  <OptionButton label="Lance" onClick={() => setView('apl-lance')} />
                 </div>
               </div>
 

@@ -3,7 +3,7 @@ import {
   TrendingDown, Percent, Calendar, DollarSign, Wallet, 
   ArrowRight, ShieldCheck, Landmark, CheckCircle, BarChart3, HelpCircle,
   Percent as PercentIcon, Clock, BadgeAlert, ArrowUpRight, Award,
-  Home, Coins, UserCheck, ShieldAlert, Banknote, Sparkles, Settings
+  Home, Coins, ShieldAlert, Banknote, Sparkles, Settings
 } from 'lucide-react';
 import { formatBRL, formatPercent, formatInt } from '../../lib/format';
 import { calcular, calcularFinanciamento } from '../../engine/engine';
@@ -299,17 +299,6 @@ export default function FinanciamentoTab({
                 <td className="p-4 text-sm font-extrabold text-foreground text-right font-display bg-primary/5">{fmtMoney(parcelaInicialConsorcio)}</td>
               </tr>
 
-              {/* Linha 5: Renda p/ Aprovação */}
-              <tr className="hover:bg-muted/10 transition-colors">
-                <td className="p-4 flex items-center gap-3">
-                  <div className="h-8 w-8 bg-primary/10 text-primary rounded-full flex items-center justify-center shrink-0">
-                    <UserCheck size={16} />
-                  </div>
-                  <span className="text-xs font-bold text-foreground/80 uppercase tracking-wider">Renda p/ Aprovação (30%)</span>
-                </td>
-                <td className="p-4 text-sm font-extrabold text-foreground text-right font-display">{fmtMoney(rendaAprovacaoFin)}</td>
-                <td className="p-4 text-sm font-extrabold text-foreground text-right font-display bg-primary/5">{fmtMoney(rendaAprovacaoCons)}</td>
-              </tr>
 
               {/* Linha 6: Indexador */}
               <tr className="hover:bg-muted/10 transition-colors">
