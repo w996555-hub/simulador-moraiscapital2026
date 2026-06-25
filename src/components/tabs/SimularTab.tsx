@@ -1387,7 +1387,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                   {variant === 'lance' && form.tipoLance === 'LANCE LIVRE' && (
                     <div className="mt-4">
                       <span className="text-sm font-bold uppercase tracking-wider text-primary block mb-1">Lance Livre Ofertado</span>
-                      <span className="font-display text-2xl md:text-3xl font-extrabold text-primary leading-none">{fmtMoney(form.valorLanceLivre)}</span>
+                      <span className="font-display text-2xl md:text-3xl font-extrabold text-black leading-none">{fmtMoney(currentResults.boletoLanceLivre)}</span>
                     </div>
                   )}
                 </div>
@@ -1450,7 +1450,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                   {variant === 'lance' && form.tipoLance === 'LANCE LIVRE' && (
                     <div className="mt-4">
                       <span className="text-sm font-bold uppercase tracking-wider text-primary block mb-1">Lance Livre Ofertado</span>
-                      <span className="font-display text-2xl md:text-3xl font-extrabold text-primary leading-none">{fmtMoney(form.valorLanceLivre)}</span>
+                      <span className="font-display text-2xl md:text-3xl font-extrabold text-black leading-none">{fmtMoney(currentResults.boletoLanceLivre)}</span>
                     </div>
                   )}
                 </div>
@@ -1515,13 +1515,6 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                     </div>
                     <div className="h-px bg-primary/60 flex-1" />
                   </div>
-
-                  {variant === 'lance' && form.tipoLance === 'LANCE LIVRE' && (
-                    <div className="mt-4">
-                      <span className="text-sm font-bold uppercase tracking-wider text-primary block mb-1">Lance Livre Ofertado</span>
-                      <span className="font-display text-2xl md:text-3xl font-extrabold text-primary leading-none">{fmtMoney(form.valorLanceLivre)}</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
