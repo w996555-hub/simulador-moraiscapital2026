@@ -238,6 +238,8 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
           const localUser = JSON.parse(localUserStr);
           if (localUser && localUser.email === userObj.email && localUser.foto_base64) {
             userObj.foto_base64 = localUser.foto_base64;
+            // Garantir que o sessionStorage também tenha a imagem de perfil atualizada para que seja enviada ao gerar propostas
+            sessionStorage.setItem('usuario', JSON.stringify(userObj));
           }
         }
         setUsuario(userObj);
