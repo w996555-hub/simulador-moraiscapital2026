@@ -380,6 +380,38 @@ export function gerarTabela(
 }
 
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// FUNDO DE INVESTIMENTO — come-cotas semestral (15%)
+// Replica o comportamento real de fundo de renda fixa longo prazo.
+// IR de 15% sobre o rendimento acumulado a cada 6 meses (maio/novembro),
+// deduzido do saldo (redução de cotas). Sem ajuste adicional no resgate
+// pois alíquota final (>24 meses) = 15% = mesma do come-cotas.
+// ─────────────────────────────────────────────────────────────
+
+function calcularFundoComeCotasSemestral(
+  principal: number,
+  taxaMensal: number,
+  prazoMeses: number,
+  aliquotaComeCotas = 0.15
+): number {
+  let saldo = principal;
+  let basePeriodo = principal; // saldo após o último come-cotas
+
+  for (let mes = 1; mes <= prazoMeses; mes++) {
+    saldo = saldo * (1 + taxaMensal);
+
+    if (mes % 6 === 0) {
+      const rendimento = saldo - basePeriodo;
+      if (rendimento > 0) {
+        saldo -= rendimento * aliquotaComeCotas;
+        basePeriodo = saldo;
+      }
+    }
+  }
+
+  return saldo;
+}
+
 // MOTOR PRINCIPAL — calcular() é o entry point
 // ─────────────────────────────────────────────────────────────
 
@@ -439,9 +471,14 @@ export function calcular(inp: InputsConsorcio): ResultadosConsorcio {
 
   const custoTotal = custoTotalAplicacao;
 
-  // Valor corrigido: crédito_carta * (1 + txInv*(1-0.15))^(prazoGrupo - parcelaContemplacao)
-  const valorCorrigidoAplicacao = paramsFinal.creditoDaCarta
-    * Math.pow(1 + inp.txInvestimentoComparativo * (1 - 0.15), paramsFinal.prazoAposContemplacao);
+  // Alavancagem de Aplicação — Fundo de Investimento com come-cotas semestral
+  // Come-cotas: IR de 15% sobre o rendimento acumulado a cada 6 meses (maio/novembro),
+  // deduzido diretamente do saldo (redução de cotas). Fundo de longo prazo.
+  const valorCorrigidoAplicacao = calcularFundoComeCotasSemestral(
+    paramsFinal.creditoDaCarta,
+    inp.txInvestimentoComparativo,
+    paramsFinal.prazoAposContemplacao
+  );
   const lucroLiquidoAplicacao = valorCorrigidoAplicacao - custoTotal;
   const retornoAplicacaoPercent = custoTotal > 0 ? valorCorrigidoAplicacao / custoTotal : 0;
 
