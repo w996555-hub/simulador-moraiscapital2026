@@ -209,7 +209,6 @@ const GRUPOS_CAMPOS = [
   {
     titulo: 'Parâmetros Comparativos',
     campos: [
-      { id: 'percentualRecompra', label: 'Recompra da Carta (condicional)' },
       { id: 'txInvestimentoComparativo', label: 'Tx. Invest. Comparativo' },
       { id: 'retornoAluguelMes', label: 'Retorno Aluguel' },
       { id: 'correcaoImovelAno', label: 'Corr. Anual Imóvel' },

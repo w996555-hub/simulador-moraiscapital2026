@@ -966,29 +966,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
               />
             )}
 
-            {isFieldVisible('vendeCarta') && (
-              <SelectInput 
-                label="Vende a Carta?" 
-                value={form.vendeCarta} 
-                onChange={val => handleChange('vendeCarta', val)} 
-                options={[
-                  { value: 'NÃO', label: 'Não' },
-                  { value: 'SIM', label: 'Sim' }
-                ]} 
-                disabled={lock} 
-              />
-            )}
 
-            {isFieldVisible('percentualRecompra') && form.vendeCarta === 'SIM' && (
-              <NumInput 
-                label="Recompra da Carta" 
-                value={form.percentualRecompra} 
-                onChange={val => handleChange('percentualRecompra', val)} 
-                isDecimal={true}
-                suffix="%" 
-                disabled={lock} 
-              />
-            )}
 
             {isFieldVisible('txInvestimentoComparativo') && (
               <NumInput 
@@ -1643,18 +1621,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
                   <span className="mt-0.5">{form.parcelasPagasAtéContemplar} parcelas</span>
                 </div>
               )}
-              {isFieldVisible('vendeCarta') && (
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground uppercase text-[8px] font-bold tracking-wider">Vende a Carta</span>
-                  <span className="mt-0.5">{form.vendeCarta}</span>
-                </div>
-              )}
-              {isFieldVisible('percentualRecompra') && form.vendeCarta === 'SIM' && (
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground uppercase text-[8px] font-bold tracking-wider">Recompra da Carta</span>
-                  <span className="mt-0.5">{fmtPercent(form.percentualRecompra)}</span>
-                </div>
-              )}
+
               {isFieldVisible('txInvestimentoComparativo') && group === 'apl' && (
                 <div className="flex flex-col">
                   <span className="text-muted-foreground uppercase text-[8px] font-bold tracking-wider">Tx. Invest. Comparativo</span>
