@@ -30,6 +30,67 @@ const DEFAULT_FORM: InputsConsorcio = {
   correcaoImovelAno: 0.06,
 };
 
+const SHORT_KEYS: Record<string, string> = {
+  credito: 'c',
+  taxaAdm: 'ta',
+  fundoReserva: 'fr',
+  prazoGrupo: 'pg',
+  correcaoCredito: 'cc',
+  parcelasRestantes: 'pr',
+  parcelasPagasAtéContemplar: 'pp',
+  meiaParcela: 'mp',
+  tipoSeguro: 'ts',
+  tipoLance: 'tl',
+  valorLanceLivre: 'vl',
+  usaEmbutido: 'ue',
+  abatimentoLance: 'al',
+  percentualRecompra: 'prc',
+  txInvestimentoComparativo: 'tic',
+  retornoAluguelMes: 'ram',
+  correcaoImovelAno: 'cia'
+};
+
+const LONG_KEYS: Record<string, string> = Object.fromEntries(
+  Object.entries(SHORT_KEYS).map(([k, v]) => [v, k])
+);
+
+function decompressConfig(compressedStr: string) {
+  const visibilidade: Record<string, boolean> = {};
+  const valores: Record<string, any> = {};
+
+  Object.keys(SHORT_KEYS).forEach(longKey => {
+    visibilidade[longKey] = true;
+  });
+
+  try {
+    const parsed = JSON.parse(compressedStr);
+    const h = parsed.h;
+    const v = parsed.v;
+    
+    if (Array.isArray(h)) {
+      h.forEach((shortKey: string) => {
+        const longKey = LONG_KEYS[shortKey];
+        if (longKey) {
+          visibilidade[longKey] = false;
+        }
+      });
+    }
+
+    if (v && typeof v === 'object') {
+      Object.keys(v).forEach(shortKey => {
+        const longKey = LONG_KEYS[shortKey];
+        if (longKey) {
+          valores[longKey] = v[shortKey];
+        }
+      });
+    }
+  } catch (e) {
+    console.error("Erro ao descomprimir configuracoes:", e);
+  }
+
+  return { visibilidade, valores };
+}
+
 export default function Index({ navigateTo }: { navigateTo: (path: string) => void }) {
   const [usuario, setUsuario] = useState<any>(null);
   const [showPerfilModal, setShowPerfilModal] = useState(false);
@@ -185,25 +246,62 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
       }
     }
 
-    // Carregar valores de variáveis padrão definidos pelo admin
-    const storedValores = localStorage.getItem('simulador_valores_padrao_admin');
-    let formBase = { ...DEFAULT_FORM };
-    if (storedValores) {
-      try {
-        const valores = JSON.parse(storedValores);
-        formBase = { ...formBase, ...valores };
-      } catch {}
-    }
+    // Carregar configurações do backend (e cachear localmente)
+    const loadConfig = async () => {
+      let formBase = { ...DEFAULT_FORM };
+      let camposObj: Record<string, boolean> = {};
+      let valoresObj: Record<string, any> = {};
 
-    const storedCampos = localStorage.getItem('simulador_campos_dados_entrada');
-    if (storedCampos) {
-      const campos = JSON.parse(storedCampos);
-      setVisibilidadeCampos(campos);
-      if (campos['parcelasRestantes'] === false) {
-        formBase.parcelasRestantes = formBase.prazoGrupo;
+      // Primeiro carregar do localStorage (resposta imediata para renderização rápida)
+      const storedValores = localStorage.getItem('simulador_valores_padrao_admin');
+      if (storedValores) {
+        try {
+          valoresObj = JSON.parse(storedValores);
+          formBase = { ...formBase, ...valoresObj };
+        } catch {}
       }
-    }
-    setForm(formBase);
+
+      const storedCampos = localStorage.getItem('simulador_campos_dados_entrada');
+      if (storedCampos) {
+        try {
+          camposObj = JSON.parse(storedCampos);
+          setVisibilidadeCampos(camposObj);
+          if (camposObj['parcelasRestantes'] === false) {
+            formBase.parcelasRestantes = formBase.prazoGrupo;
+          }
+        } catch {}
+      }
+      setForm(formBase);
+
+      // Depois, buscar do servidor em segundo plano para garantir atualização
+      try {
+        const response = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/listar-usuarios');
+        if (response.ok) {
+          const data = await response.json();
+          const usersList = Array.isArray(data) ? data : (data.users || []);
+          const configUser = usersList.find((u: any) => u.email === 'config@morais.com');
+          if (configUser && configUser.nome) {
+            const { visibilidade, valores } = decompressConfig(configUser.nome);
+            
+            // Atualizar estados
+            setVisibilidadeCampos(visibilidade);
+            let updatedFormBase = { ...DEFAULT_FORM, ...valores };
+            if (visibilidade['parcelasRestantes'] === false) {
+              updatedFormBase.parcelasRestantes = updatedFormBase.prazoGrupo;
+            }
+            setForm(updatedFormBase);
+
+            // Persistir localmente
+            localStorage.setItem('simulador_valores_padrao_admin', JSON.stringify(valores));
+            localStorage.setItem('simulador_campos_dados_entrada', JSON.stringify(visibilidade));
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar configuracoes do servidor:", err);
+      }
+    };
+
+    loadConfig();
   }, []);
 
   const handleLogout = () => {

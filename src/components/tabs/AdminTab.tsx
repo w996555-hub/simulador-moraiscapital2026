@@ -262,6 +262,85 @@ const getSelectOptions = (id: string) => {
   return [];
 };
 
+const SHORT_KEYS: Record<string, string> = {
+  credito: 'c',
+  taxaAdm: 'ta',
+  fundoReserva: 'fr',
+  prazoGrupo: 'pg',
+  correcaoCredito: 'cc',
+  parcelasRestantes: 'pr',
+  parcelasPagasAtéContemplar: 'pp',
+  meiaParcela: 'mp',
+  tipoSeguro: 'ts',
+  tipoLance: 'tl',
+  valorLanceLivre: 'vl',
+  usaEmbutido: 'ue',
+  abatimentoLance: 'al',
+  percentualRecompra: 'prc',
+  txInvestimentoComparativo: 'tic',
+  retornoAluguelMes: 'ram',
+  correcaoImovelAno: 'cia'
+};
+
+const LONG_KEYS: Record<string, string> = Object.fromEntries(
+  Object.entries(SHORT_KEYS).map(([k, v]) => [v, k])
+);
+
+function compressConfig(visibilidade: Record<string, boolean>, valores: Record<string, any>) {
+  const h: string[] = [];
+  const v: Record<string, any> = {};
+
+  Object.keys(SHORT_KEYS).forEach(longKey => {
+    const shortKey = SHORT_KEYS[longKey];
+    if (visibilidade[longKey] === false) {
+      h.push(shortKey);
+    }
+    const val = valores[longKey];
+    if (val !== undefined && val !== VALORES_PADRAO_FALLBACK[longKey]) {
+      v[shortKey] = val;
+    }
+  });
+
+  return JSON.stringify({ h, v });
+}
+
+function decompressConfig(compressedStr: string) {
+  const visibilidade: Record<string, boolean> = {};
+  const valores: Record<string, any> = {};
+
+  Object.keys(SHORT_KEYS).forEach(longKey => {
+    visibilidade[longKey] = true;
+  });
+
+  try {
+    const parsed = JSON.parse(compressedStr);
+    const h = parsed.h;
+    const v = parsed.v;
+    
+    if (Array.isArray(h)) {
+      h.forEach((shortKey: string) => {
+        const longKey = LONG_KEYS[shortKey];
+        if (longKey) {
+          visibilidade[longKey] = false;
+        }
+      });
+    }
+
+    if (v && typeof v === 'object') {
+      Object.keys(v).forEach(shortKey => {
+        const longKey = LONG_KEYS[shortKey];
+        if (longKey) {
+          valores[longKey] = v[shortKey];
+        }
+      });
+    }
+  } catch (e) {
+    console.error("Erro ao descomprimir configuracoes:", e);
+  }
+
+  return { visibilidade, valores };
+}
+
 export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: AdminTabProps) {
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
@@ -806,11 +885,62 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
         const data = await response.json();
         const usersList = Array.isArray(data) ? data : (data.users || []);
         setUsers(usersList);
+
+        // Encontrar o usuario config@morais.com e carregar as configuracoes dele
+        const configUser = usersList.find((u: any) => u.email === 'config@morais.com');
+        if (configUser && configUser.nome) {
+          const { visibilidade, valores } = decompressConfig(configUser.nome);
+          setValoresCampos(prev => ({ ...prev, ...valores }));
+          setVisibilidadeCampos(visibilidade);
+          localStorage.setItem('simulador_valores_padrao_admin', JSON.stringify(valores));
+          localStorage.setItem('simulador_campos_dados_entrada', JSON.stringify(visibilidade));
+        }
       }
     } catch (err) {
       console.error("Erro ao carregar logins:", err);
     }
   };
+
+  const saveConfigToBackend = async (nextVis: Record<string, boolean>, nextValores: Record<string, any>) => {
+    try {
+      const compressed = compressConfig(nextVis, nextValores);
+      
+      const res = await fetch('https://n8n.srv939429.hstgr.cloud/webhook/listar-usuarios');
+      if (res.ok) {
+        const data = await res.json();
+        const usersList = Array.isArray(data) ? data : (data.users || []);
+        const configUser = usersList.find((u: any) => u.email === 'config@morais.com');
+        
+        if (!configUser) {
+          await fetch('https://n8n.srv939429.hstgr.cloud/webhook/criar-usuario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nome: compressed,
+              email: 'config@morais.com',
+              senha: 'config-password-123',
+              role: 'assessor'
+            })
+          });
+        } else {
+          await fetch('https://n8n.srv939429.hstgr.cloud/webhook/editar-usuario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              originalEmail: 'config@morais.com',
+              nome: compressed,
+              email: 'config@morais.com',
+              senha: '',
+              role: 'assessor'
+            })
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao sincronizar configuracoes com o servidor:", err);
+    }
+  };
+
 
   useEffect(() => {
     // Carregar logins da API
@@ -836,6 +966,7 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
     const isCurrentlyVisible = nextVis[id] !== false;
     nextVis[id] = !isCurrentlyVisible;
     setVisibilidadeCampos(nextVis);
+    saveConfigToBackend(nextVis, valoresCampos);
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -1074,6 +1205,7 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
                           const updatedValores = { ...valoresCampos, [campo.id]: newVal };
                           setValoresCampos(updatedValores);
                           localStorage.setItem('simulador_valores_padrao_admin', JSON.stringify(updatedValores));
+                          saveConfigToBackend(visibilidadeCampos, updatedValores);
                         };
 
                         return (
@@ -1260,7 +1392,7 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
               )}
 
               <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 nice-scroll">
-                {users.map((user) => {
+                {users.filter(u => u.email !== 'config@morais.com').map((user) => {
                   const isEditing = editingEmail === user.email;
 
                   if (isEditing) {
