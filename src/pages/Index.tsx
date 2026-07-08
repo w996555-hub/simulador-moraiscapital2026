@@ -47,7 +47,9 @@ const SHORT_KEYS: Record<string, string> = {
   percentualRecompra: 'prc',
   txInvestimentoComparativo: 'tic',
   retornoAluguelMes: 'ram',
-  correcaoImovelAno: 'cia'
+  correcaoImovelAno: 'cia',
+  taxaJuros: 'tj',
+  trMensal: 'tr'
 };
 
 const LONG_KEYS: Record<string, string> = Object.fromEntries(
@@ -260,6 +262,13 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
         try {
           valoresObj = JSON.parse(storedValores);
           formBase = { ...formBase, ...valoresObj };
+          if (valoresObj.taxaJuros !== undefined || valoresObj.trMensal !== undefined) {
+            setInputsFin(prev => ({
+              ...prev,
+              taxaJuros: valoresObj.taxaJuros !== undefined ? valoresObj.taxaJuros * 100 : prev.taxaJuros,
+              trMensal: valoresObj.trMensal !== undefined ? valoresObj.trMensal * 100 : prev.trMensal,
+            }));
+          }
         } catch {}
       }
 
@@ -292,6 +301,14 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
               updatedFormBase.parcelasRestantes = updatedFormBase.prazoGrupo;
             }
             setForm(updatedFormBase);
+
+            if (valores.taxaJuros !== undefined || valores.trMensal !== undefined) {
+              setInputsFin(prev => ({
+                ...prev,
+                taxaJuros: valores.taxaJuros !== undefined ? valores.taxaJuros * 100 : prev.taxaJuros,
+                trMensal: valores.trMensal !== undefined ? valores.trMensal * 100 : prev.trMensal,
+              }));
+            }
 
             // Persistir localmente
             localStorage.setItem('simulador_valores_padrao_admin', JSON.stringify(valores));

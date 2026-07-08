@@ -212,6 +212,8 @@ const GRUPOS_CAMPOS = [
       { id: 'txInvestimentoComparativo', label: 'Tx. Invest. Comparativo' },
       { id: 'retornoAluguelMes', label: 'Retorno Aluguel' },
       { id: 'correcaoImovelAno', label: 'Corr. Anual Imóvel' },
+      { id: 'taxaJuros', label: 'Tx. Juros Financiamento SAC (%)' },
+      { id: 'trMensal', label: 'Indexador TR Financiamento (% ao mês)' },
     ]
   }
 ];
@@ -234,6 +236,8 @@ const VALORES_PADRAO_FALLBACK: Record<string, any> = {
   txInvestimentoComparativo: 0.0085,
   retornoAluguelMes: 0.005,
   correcaoImovelAno: 0.06,
+  taxaJuros: 0.10744,
+  trMensal: 0.0015,
 };
 
 const getSelectOptions = (id: string) => {
@@ -278,7 +282,9 @@ const SHORT_KEYS: Record<string, string> = {
   percentualRecompra: 'prc',
   txInvestimentoComparativo: 'tic',
   retornoAluguelMes: 'ram',
-  correcaoImovelAno: 'cia'
+  correcaoImovelAno: 'cia',
+  taxaJuros: 'tj',
+  trMensal: 'tr'
 };
 
 const LONG_KEYS: Record<string, string> = Object.fromEntries(
@@ -1197,7 +1203,7 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
                       {grupo.campos.map((campo) => {
                         const isVisible = visibilidadeCampos[campo.id] !== false;
                         const value = valoresCampos[campo.id] !== undefined ? valoresCampos[campo.id] : VALORES_PADRAO_FALLBACK[campo.id];
-                        const isDecimalField = ['taxaAdm', 'fundoReserva', 'correcaoCredito', 'percentualRecompra', 'txInvestimentoComparativo', 'retornoAluguelMes', 'correcaoImovelAno'].includes(campo.id);
+                        const isDecimalField = ['taxaAdm', 'fundoReserva', 'correcaoCredito', 'percentualRecompra', 'txInvestimentoComparativo', 'retornoAluguelMes', 'correcaoImovelAno', 'taxaJuros', 'trMensal'].includes(campo.id);
                         const isSelectField = ['meiaParcela', 'tipoSeguro', 'tipoLance', 'usaEmbutido', 'abatimentoLance'].includes(campo.id);
 
                         const handleValueChange = (newVal: any) => {

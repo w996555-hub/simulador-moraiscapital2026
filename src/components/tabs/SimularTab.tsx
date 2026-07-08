@@ -53,14 +53,35 @@ interface NumInputProps {
 }
 
 function NumInput({ label, value, onChange, disabled, suffix, isDecimal }: NumInputProps) {
-  const displayValue = isDecimal ? Number((value * 100).toFixed(4)) : value;
-  
+  const [localValue, setLocalValue] = useState<string>('');
+
+  useEffect(() => {
+    if (value !== undefined && value !== null && !isNaN(value)) {
+      const parsedDisplay = isDecimal ? Number((value * 100).toFixed(4)) : value;
+      if (Number(localValue) !== parsedDisplay || localValue === '') {
+        setLocalValue(parsedDisplay.toString());
+      }
+    } else {
+      setLocalValue('');
+    }
+  }, [value, isDecimal]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = Number(e.target.value);
-    if (isDecimal) val = val / 100;
-    onChange(val);
+    const valStr = e.target.value;
+    setLocalValue(valStr);
+
+    if (valStr === '') {
+      onChange(0);
+      return;
+    }
+
+    let val = Number(valStr);
+    if (!isNaN(val)) {
+      if (isDecimal) val = val / 100;
+      onChange(val);
+    }
   };
-  
+
   return (
     <div className="space-y-1 relative">
       <label className="text-[12px] font-semibold text-muted-foreground/90 block">{label}</label>
@@ -68,7 +89,7 @@ function NumInput({ label, value, onChange, disabled, suffix, isDecimal }: NumIn
         <input
           type="number"
           step={isDecimal ? "0.01" : "1"}
-          value={displayValue || ''}
+          value={localValue}
           onChange={handleInputChange}
           disabled={disabled}
           className="w-full h-11 pl-3 pr-16 rounded-xl border border-input bg-background text-sm font-semibold focus:ring-4 focus:ring-primary/10 focus:border-primary/50 outline-none transition-all disabled:opacity-50 disabled:bg-muted disabled:cursor-not-allowed text-foreground"
@@ -1496,6 +1517,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.7fr] gap-6 border border-border rounded-2xl bg-card p-5 shadow-sm items-center">
                 <div className="flex flex-col justify-center divide-y divide-border h-full pr-0 lg:pr-6 lg:border-r border-primary/60">
                   <MiniCard label="Valor Investido" value={fmtMoney(currentResults.desembolso)} Icon={PiggyBank} isResult={true} />
+                  <MiniCard label="Crédito Contemplado" value={fmtMoney(currentResults.creditoDaCarta)} Icon={Wallet} isResult={true} />
                   <MiniCard label="Custo Total" value={fmtMoney(currentResults.custoTotal)} Icon={Banknote} isResult={true} />
                 </div>
 
