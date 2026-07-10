@@ -305,9 +305,12 @@ export function gerarTabela(
     // G: Fluxo total
     const fluxoTotal = (fluxoCaixa === 0 ? 0 : fluxoCaixa) + (boletoLance > 0 ? -boletoLance : 0);
 
-    // H: Desembolso acumulado
-    if (n >= parcelaEntrada && fluxoTotal < 0) {
-      desembolsoAcumulado += Math.abs(fluxoTotal);
+    // H: Desembolso acumulado — acumula oquePaga + boletoLance (o que saiu do bolso),
+    // independente do crédito recebido na contemplação (que é uma entrada, não saída).
+    // BUG FIX: condição era "fluxoTotal < 0", excluindo o mês da contemplação (onde
+    // fluxoTotal > 0 por causa do crédito recebido), resultando em H40 < B36.
+    if (n >= parcelaEntrada && (oquePaga > 0 || boletoLance > 0)) {
+      desembolsoAcumulado += oquePaga + boletoLance;
     }
 
     // J: Aluguel estimado pós contemplação
@@ -432,16 +435,20 @@ export function calcular(inp: InputsConsorcio): ResultadosConsorcio {
   const tabelaFinal = gerarTabela(inp, paramsFinal);
 
   // Saldo meias não pagas (A26)
+  // BUG FIX: Excel retorna 0 para INTEGRAL (IF(B12="MEIA", soma, 0)).
+  // Engine anterior acumulava base completa mesmo para INTEGRAL.
   let saldoMeias = 0;
-  for (let i = paramsFinal.parcelaEntrada; i <= paramsFinal.parcelaContemplacao && i <= tabelaFinal.length; i++) {
-    const row = tabelaFinal[i - 1];
-    const base = inp.abateOuRatea === "DESCONTAR" ? row.parcelaBaseFuro : row.parcelaBaseFixa;
-    saldoMeias += inp.meiaParcela === "MEIA" ? base * 0.5 : base;
-  }
-  for (let i = 1; i < paramsFinal.parcelaEntrada && i <= tabelaFinal.length; i++) {
-    const row = tabelaFinal[i - 1];
-    const base = inp.abateOuRatea === "DESCONTAR" ? row.parcelaBaseFuro : row.parcelaBaseFixa;
-    saldoMeias += inp.meiaParcela === "MEIA" ? base * 0.5 : base;
+  if (inp.meiaParcela === "MEIA") {
+    for (let i = paramsFinal.parcelaEntrada; i <= paramsFinal.parcelaContemplacao && i <= tabelaFinal.length; i++) {
+      const row = tabelaFinal[i - 1];
+      const base = inp.abateOuRatea === "DESCONTAR" ? row.parcelaBaseFuro : row.parcelaBaseFixa;
+      saldoMeias += base * 0.5;
+    }
+    for (let i = 1; i < paramsFinal.parcelaEntrada && i <= tabelaFinal.length; i++) {
+      const row = tabelaFinal[i - 1];
+      const base = inp.abateOuRatea === "DESCONTAR" ? row.parcelaBaseFuro : row.parcelaBaseFixa;
+      saldoMeias += base * 0.5;
+    }
   }
 
   // Alavancagem Patrimonial
@@ -495,7 +502,7 @@ export function calcular(inp: InputsConsorcio): ResultadosConsorcio {
     parcelasVencidas: paramsFinal.parcelasVencidas,
     parcelasPagasPreContemplacao: paramsFinal.parcelasPagasPreContemplacao,
     saldoMeiasNaoPagas: saldoMeias,
-    valorAcumuladoInvestido: tabelaFinal[paramsFinal.parcelaContemplacao - 1]?.desembolsoAcumulado ?? 0,
+    valorAcumuladoInvestido: paramsFinal.desembolso,  // BUG FIX: era tabelaFinal[...].desembolsoAcumulado (H40 sem D40)
     saldoDevedor: 0,
     lanceEmReais: paramsFinal.lanceTotal,
     lanceEmParcelas: paramsFinal.lanceEmParcelas,
