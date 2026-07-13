@@ -48,9 +48,37 @@ export default function BuscarPropostasTab() {
       if (!res.ok) {
         throw new Error(`Erro ao buscar propostas. Status: ${res.status}`);
       }
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data.propostas || []);
-      setResultados(list);
+      let text = await res.text();
+      // Limpa possível prefixo '=' enviado pelo backend do webhook
+      if (text.trim().startsWith('=')) {
+        text = text.trim().substring(1);
+      }
+      const data = JSON.parse(text);
+      
+      let list: PropostaResumo[] = [];
+      if (Array.isArray(data)) {
+        if (data.length > 0 && data[0] && typeof data[0].body === 'string') {
+          list = JSON.parse(data[0].body);
+        } else if (data.length > 0 && data[0] && Array.isArray(data[0].body)) {
+          list = data[0].body;
+        } else {
+          list = data;
+        }
+      } else if (data && typeof data.body === 'string') {
+        list = JSON.parse(data.body);
+      } else if (data && Array.isArray(data.body)) {
+        list = data.body;
+      } else if (data && Array.isArray(data.propostas)) {
+        list = data.propostas;
+      }
+
+      // Garante que o crédito simulado seja tratado como número
+      const formattedList = list.map((item: any) => ({
+        ...item,
+        credito_simulado: Number(item.credito_simulado) || 0
+      }));
+
+      setResultados(formattedList);
     } catch (err) {
       console.error('Erro real ao buscar propostas:', err);
       setErro('Erro de conexão ao buscar propostas. Verifique sua rede.');
