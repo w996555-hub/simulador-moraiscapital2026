@@ -215,6 +215,12 @@ const GRUPOS_CAMPOS = [
       { id: 'taxaJuros', label: 'Tx. Juros Financiamento SAC (%)' },
       { id: 'trMensal', label: 'Indexador TR Financiamento (% ao mês)' },
     ]
+  },
+  {
+    titulo: 'Navegação e Abas',
+    campos: [
+      { id: 'resumoTab', label: 'Aba Resumo no Cabeçalho' }
+    ]
   }
 ];
 
@@ -284,7 +290,8 @@ const SHORT_KEYS: Record<string, string> = {
   retornoAluguelMes: 'ram',
   correcaoImovelAno: 'cia',
   taxaJuros: 'tj',
-  trMensal: 'tr'
+  trMensal: 'tr',
+  resumoTab: 'rt'
 };
 
 const LONG_KEYS: Record<string, string> = Object.fromEntries(
@@ -969,8 +976,18 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
   const handleToggleField = (id: string) => {
     const nextVis = { ...visibilidadeCampos };
     const isCurrentlyVisible = nextVis[id] !== false;
+
+    if (id === 'resumoTab' && !isCurrentlyVisible) {
+      const senha = prompt("Insira a senha para ativar a aba Resumo:");
+      if (senha !== 'morais2026') {
+        alert("Essa função foi desabilitada por enquanto, para reabilitar insira a senha");
+        return;
+      }
+    }
+
     nextVis[id] = !isCurrentlyVisible;
     setVisibilidadeCampos(nextVis);
+    localStorage.setItem('simulador_campos_dados_entrada', JSON.stringify(nextVis));
     saveConfigToBackend(nextVis, valoresCampos);
   };
 

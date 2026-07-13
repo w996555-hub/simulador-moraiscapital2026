@@ -49,7 +49,8 @@ const SHORT_KEYS: Record<string, string> = {
   retornoAluguelMes: 'ram',
   correcaoImovelAno: 'cia',
   taxaJuros: 'tj',
-  trMensal: 'tr'
+  trMensal: 'tr',
+  resumoTab: 'rt'
 };
 
 const LONG_KEYS: Record<string, string> = Object.fromEntries(
@@ -364,7 +365,19 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
           {['simular', 'financiamento', 'cdb', 'resumo'].map((tab) => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); setSimularView('form'); }}
+              onClick={() => {
+                if (tab === 'resumo' && visibilidadeCampos['resumoTab'] === false) {
+                  const senha = prompt("Essa função foi desabilitada por enquanto, para reabilitar insira a senha:");
+                  if (senha === null) return;
+                  if (senha !== 'morais2026') {
+                    alert("Senha incorreta.");
+                    return;
+                  }
+                  setVisibilidadeCampos(prev => ({ ...prev, resumoTab: true }));
+                }
+                setActiveTab(tab);
+                setSimularView('form');
+              }}
               className={`px-4 py-4 text-[13px] font-medium capitalize relative transition-colors ${
                 activeTab === tab ? 'text-white' : 'text-white/70 hover:bg-white/5 rounded-lg'
               }`}
