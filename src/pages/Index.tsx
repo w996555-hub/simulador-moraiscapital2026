@@ -362,30 +362,23 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
           <img src="/logo-white.png" alt="Morais Capital" className="h-8 w-auto object-contain" />
         </div>
         <nav className="flex items-center gap-1">
-          {['simular', 'financiamento', 'cdb', 'resumo'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => {
-                if (tab === 'resumo' && visibilidadeCampos['resumoTab'] === false) {
-                  const senha = prompt("Essa função foi desabilitada por enquanto, para reabilitar insira a senha:");
-                  if (senha === null) return;
-                  if (senha !== 'morais2026') {
-                    alert("Senha incorreta.");
-                    return;
-                  }
-                  setVisibilidadeCampos(prev => ({ ...prev, resumoTab: true }));
-                }
-                setActiveTab(tab);
-                setSimularView('form');
-              }}
-              className={`px-4 py-4 text-[13px] font-medium capitalize relative transition-colors ${
-                activeTab === tab ? 'text-white' : 'text-white/70 hover:bg-white/5 rounded-lg'
-              }`}
-            >
-              {tab}
-              {activeTab === tab && <div className="absolute bottom-0 left-3 right-3 h-[2px] bg-white rounded-t-full" />}
-            </button>
-          ))}
+          {['simular', 'financiamento', 'cdb', 'resumo']
+            .filter(tab => tab !== 'resumo' || visibilidadeCampos['resumoTab'] !== false)
+            .map((tab) => (
+              <button
+                key={tab}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setSimularView('form');
+                }}
+                className={`px-4 py-4 text-[13px] font-medium capitalize relative transition-colors ${
+                  activeTab === tab ? 'text-white' : 'text-white/70 hover:bg-white/5 rounded-lg'
+                }`}
+              >
+                {tab}
+                {activeTab === tab && <div className="absolute bottom-0 left-3 right-3 h-[2px] bg-white rounded-t-full" />}
+              </button>
+            ))}
         </nav>
         <div className="ml-auto flex items-center gap-4">
           {isAdmin && (

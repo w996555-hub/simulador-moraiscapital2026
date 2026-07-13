@@ -1250,52 +1250,54 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
                               </button>
                             </div>
 
-                            <div className="w-full pt-2 border-t border-gray-100 flex items-center justify-between gap-3">
-                              <span className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground font-sans">Valor Padrão:</span>
-                              {isSelectField ? (
-                                <select
-                                  value={value}
-                                  onChange={(e) => handleValueChange(e.target.value)}
-                                  className="h-8 px-2 rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
-                                >
-                                  {getSelectOptions(campo.id).map(opt => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                  ))}
-                                </select>
-                              ) : isDecimalField ? (
-                                <div className="flex items-center gap-1">
+                            {campo.id !== 'resumoTab' && (
+                              <div className="w-full pt-2 border-t border-gray-100 flex items-center justify-between gap-3">
+                                <span className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground font-sans">Valor Padrão:</span>
+                                {isSelectField ? (
+                                  <select
+                                    value={value}
+                                    onChange={(e) => handleValueChange(e.target.value)}
+                                    className="h-8 px-2 rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                  >
+                                    {getSelectOptions(campo.id).map(opt => (
+                                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                  </select>
+                                ) : isDecimalField ? (
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={Number((value * 100).toFixed(4))}
+                                      onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        handleValueChange(val / 100);
+                                      }}
+                                      className="w-24 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                    />
+                                    <span className="text-[10px] font-bold text-muted-foreground">%</span>
+                                  </div>
+                                ) : campo.id === 'credito' || campo.id === 'valorLanceLivre' ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold text-muted-foreground">R$</span>
+                                    <input
+                                      type="number"
+                                      step="1000"
+                                      value={value}
+                                      onChange={(e) => handleValueChange(Number(e.target.value))}
+                                      className="w-28 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                    />
+                                  </div>
+                                ) : (
                                   <input
                                     type="number"
-                                    step="0.01"
-                                    value={Number((value * 100).toFixed(4))}
-                                    onChange={(e) => {
-                                      const val = Number(e.target.value);
-                                      handleValueChange(val / 100);
-                                    }}
-                                    className="w-24 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
-                                  />
-                                  <span className="text-[10px] font-bold text-muted-foreground">%</span>
-                                </div>
-                              ) : campo.id === 'credito' || campo.id === 'valorLanceLivre' ? (
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] font-bold text-muted-foreground">R$</span>
-                                  <input
-                                    type="number"
-                                    step="1000"
                                     value={value}
                                     onChange={(e) => handleValueChange(Number(e.target.value))}
-                                    className="w-28 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
+                                    className="w-20 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
                                   />
-                                </div>
-                              ) : (
-                                <input
-                                  type="number"
-                                  value={value}
-                                  onChange={(e) => handleValueChange(Number(e.target.value))}
-                                  className="w-20 h-8 px-2 text-right rounded-lg border border-gray-200 bg-background text-xs font-semibold outline-none text-foreground font-sans focus:border-primary/50"
-                                />
-                              )}
-                            </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
