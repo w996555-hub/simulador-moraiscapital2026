@@ -1173,30 +1173,6 @@ export default function AdminTab({ visibilidadeCampos, setVisibilidadeCampos }: 
 
   return (
     <div className="space-y-6">
-      {/* Subtabs Navigation */}
-      <div className="flex border-b border-border bg-card rounded-2xl p-2 shadow-xs gap-2">
-        <button
-          onClick={() => setSubtab('acessos')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${
-            subtab === 'acessos'
-              ? 'bg-primary text-white shadow-sm'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          Acessos e Parâmetros
-        </button>
-        <button
-          onClick={() => setSubtab('modelos')}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-xl transition-all ${
-            subtab === 'modelos'
-              ? 'bg-primary text-white shadow-sm'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-        >
-          Modelos de PDF
-        </button>
-      </div>
-
       {subtab === 'acessos' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300">
           {/* Coluna 1: Toggles de Visibilidade dos Campos */}
