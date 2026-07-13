@@ -44,15 +44,15 @@ export default function BuscarPropostasTab() {
         url += `&valor=${encodeURIComponent(valorSimulado.trim())}`;
       }
 
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) {
-        throw new Error('Erro ao buscar propostas');
+        throw new Error(`Erro ao buscar propostas. Status: ${res.status}`);
       }
       const data = await res.json();
       const list = Array.isArray(data) ? data : (data.propostas || []);
       setResultados(list);
     } catch (err) {
-      console.error(err);
+      console.error('Erro real ao buscar propostas:', err);
       setErro('Erro de conexão ao buscar propostas. Verifique sua rede.');
     } finally {
       setLoading(false);
