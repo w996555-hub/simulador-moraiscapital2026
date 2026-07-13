@@ -90,6 +90,7 @@ export interface ResultadosConsorcio {
   parcelaInicial: number;
   desembolso: number;
   creditoDaCarta: number;
+  creditoNaContemplacao: number;
   parcelaPosContemplacao: number;
   prazoRestante: number;
   percentualLanceTotal: number;

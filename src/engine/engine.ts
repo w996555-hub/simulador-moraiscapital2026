@@ -511,6 +511,7 @@ export function calcular(inp: InputsConsorcio): ResultadosConsorcio {
     parcelaInicial,
     desembolso: paramsFinal.desembolso,
     creditoDaCarta: paramsFinal.creditoDaCarta,
+    creditoNaContemplacao: paramsFinal.creditoNaContemplacao,
     parcelaPosContemplacao: parcelaPos,
     prazoRestante: paramsFinal.prazoRestante,
     percentualLanceTotal: paramsFinal.percentualLance,

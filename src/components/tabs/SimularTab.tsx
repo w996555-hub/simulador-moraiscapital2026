@@ -1058,7 +1058,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
             {/* Faixa de Lance Livre */}
             {form.tipoLance === 'LANCE LIVRE' && (
               <div className="rounded-xl bg-muted/30 px-5 py-3 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-muted-foreground font-display uppercase tracking-wider">
-                <span>Lance Livre: <span className="text-foreground font-extrabold">{fmtPercent(resultados.boletoLanceLivre / (resultados.creditoDaCarta || 1))}</span></span>
+                <span>Lance Livre: <span className="text-foreground font-extrabold">{fmtPercent(resultados.boletoLanceLivre / (resultados.creditoNaContemplacao || 1))}</span></span>
                 <span className="text-border">|</span>
                 <span>Lance Total (R$): <span className="text-foreground font-extrabold">{fmtMoney(resultados.lanceEmReais)}</span></span>
                 <span className="text-border">|</span>
