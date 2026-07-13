@@ -457,7 +457,7 @@ export function calcular(inp: InputsConsorcio): ResultadosConsorcio {
   const diferencaAPagar = Math.abs(aluguelEstimado - parcelaPos);
 
   // Alavancagem Financeira
-  const desembolsoVenda = paramsFinal.desembolso;
+  const desembolsoVenda = paramsFinal.desembolso + paramsFinal.boletoLanceLivre;
   const valorVenda = paramsFinal.creditoDaCarta * inp.percentualRecompra;
   const lucroLiquidoVenda = valorVenda - desembolsoVenda;
   // Retorno ao mês via IRR simplificado (fluxo col Q)

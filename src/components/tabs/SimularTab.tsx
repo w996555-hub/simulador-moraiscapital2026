@@ -1447,7 +1447,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
               {/* Bloco 2 - Card Composto */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.7fr] gap-6 border border-border rounded-2xl bg-card p-5 shadow-sm items-center">
                 <div className="flex flex-col justify-center divide-y divide-border h-full pr-0 lg:pr-6 lg:border-r border-primary/60">
-                  <MiniCard label="Valor Investido" value={fmtMoney(currentResults.desembolso)} Icon={TrendingUp} isResult={true} />
+                  <MiniCard label="Valor Investido" value={fmtMoney(currentResults.desembolso + (currentResults.boletoLanceLivre || 0))} Icon={TrendingUp} isResult={true} />
                   <MiniCard label="Valor da Carta" value={fmtMoney(currentResults.creditoDaCarta)} Icon={PiggyBank} isResult={true} />
                 </div>
 
