@@ -189,3 +189,10 @@ export interface ResultadosCDB {
   tabela: LinhaTabelaCDB[];
 }
 
+export interface PropostaResumo {
+  id: string;
+  nome_cliente: string;
+  credito_simulado: number;
+  criado_em: string;
+}
+
