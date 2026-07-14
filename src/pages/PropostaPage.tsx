@@ -124,7 +124,7 @@ export default function PropostaPage() {
   let finResultadosFidelidade = finResultados;
 
   const isActiveSorteio = form.tipoLance === 'SORTEIO';
-  const isActiveFidelidade = form.tipoLance === 'FIDELIDADE';
+  const isActiveFidelidade = form.tipoLance === 'FIDELIDADE' || form.tipoLance === 'LANCE LIVRE';
 
   if (!isActiveSorteio) {
     try {
@@ -1130,8 +1130,8 @@ export default function PropostaPage() {
                   {/* VIP's Fidelidade */}
                   <div className="col-box">
                     <div className="col-hdr lance">
-                      <div className="ch-label font-sans">VIP's Fidelidade</div>
-                      <div className="ch-sub font-sans">Lance 30%</div>
+                      <div className="ch-label font-sans">{form.tipoLance === 'LANCE LIVRE' ? 'Lance Livre' : "VIP's Fidelidade"}</div>
+                      <div className="ch-sub font-sans">{form.tipoLance === 'LANCE LIVRE' ? 'Lance Ofertado' : 'Lance 30%'}</div>
                     </div>
                     <div className="col-body">
                       <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosFidelidade.desembolso + (resultadosFidelidade.boletoLanceLivre || 0))}</div></div>
@@ -1161,7 +1161,7 @@ export default function PropostaPage() {
                     </div>
                     
                     <div className="bdn-col">
-                      <div className="bch lan font-sans">VIP's Fidelidade — próxima carta</div>
+                      <div className="bch lan font-sans">{form.tipoLance === 'LANCE LIVRE' ? 'Lance Livre' : "VIP's Fidelidade"} — próxima carta</div>
                       <div className="bdn-hint font-sans">Aplicando {formatBRL(valorRevendaFidelidade)} (valor de revenda) a {taxaInvest.toFixed(2)}% a.m.</div>
                       <div className="eq-box"><div className="l font-sans">Retorno mensal da aplicação</div><div className="v font-display">+ {formatBRL(retornoMensalFidelidade)} / mês</div></div>
                       <div className="eq-box"><div className="l font-sans">Parcela que já pagava</div><div className="v font-display">+ {formatBRL(parcelaMensalFidelidade)} / mês</div></div>
@@ -1205,8 +1205,8 @@ export default function PropostaPage() {
                   
                   <div className="col-box">
                     <div className="col-hdr lance">
-                      <div className="ch-label font-sans">VIP's Fidelidade</div>
-                      <div className="ch-sub font-sans">Lance 30%</div>
+                      <div className="ch-label font-sans">{form.tipoLance === 'LANCE LIVRE' ? 'Lance Livre' : "VIP's Fidelidade"}</div>
+                      <div className="ch-sub font-sans">{form.tipoLance === 'LANCE LIVRE' ? 'Lance Ofertado' : 'Lance 30%'}</div>
                     </div>
                     <div className="col-body">
                       <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosFidelidade.desembolso + (resultadosFidelidade.boletoLanceLivre || 0))}</div></div>
@@ -1272,7 +1272,7 @@ export default function PropostaPage() {
                       </div>
 
                       <div className="col-box">
-                        <div className="col-hdr lance"><div className="ch-label font-sans">VIP's Fidelidade</div></div>
+                        <div className="col-hdr lance"><div className="ch-label font-sans">{form.tipoLance === 'LANCE LIVRE' ? 'Lance Livre' : "VIP's Fidelidade"}</div></div>
                         <div className="col-body">
                           <div className="ck"><div className="l font-sans">Crédito da carta</div><div className="v font-display">{formatBRL(resultadosFidelidade.creditoDaCarta)}</div></div>
                           <div className="ck"><div className="l font-sans">Parcela pós contemplação</div><div className="v red font-display">{formatBRL(resultadosFidelidade.parcelaPosContemplacao)} / mês</div></div>
@@ -1322,7 +1322,7 @@ export default function PropostaPage() {
                         </div>
                       </div>
                       <div className="col-box">
-                        <div className="col-hdr lance"><div className="ch-label font-sans">VIP's Fidelidade</div></div>
+                        <div className="col-hdr lance"><div className="ch-label font-sans">{form.tipoLance === 'LANCE LIVRE' ? 'Lance Livre' : "VIP's Fidelidade"}</div></div>
                         <div className="col-body">
                           <div className="ck"><div className="l font-sans">Crédito da carta</div><div className="v font-display">{formatBRL(resultadosFidelidade.creditoDaCarta)}</div></div>
                           <div className="ck"><div className="l font-sans">Parcela pós contemplação</div><div className="v red font-display">{formatBRL(resultadosFidelidade.parcelaPosContemplacao)} / mês</div></div>
