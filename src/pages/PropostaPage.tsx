@@ -231,14 +231,14 @@ export default function PropostaPage() {
   const totalAluguelSorteio = aluguelInicialSorteio * (form.prazoGrupo - form.parcelasPagasAtéContemplar);
   const pctInqSorteio = Math.min(Math.max(Math.round((totalAluguelSorteio / custoTotalSorteio) * 100), 1), 99);
   const pctCompSorteio = 100 - pctInqSorteio;
-  const valorImovelFimSorteio = resultadosSorteio.creditoDaCarta * Math.pow(1 + (form.correcaoImovelAno || 0.06), form.prazoGrupo / 12);
+  const valorImovelFimSorteio = resultadosSorteio.creditoDaCarta * Math.pow(1 + (form.correcaoImovelAno || 0.06), (form.prazoGrupo - resultadosSorteio.parcelaContemplacao) / 12);
   const patrimonioLiquidoSorteio = valorImovelFimSorteio - custoTotalSorteio;
 
   const aluguelInicialFidelidade = resultadosFidelidade.creditoDaCarta * (form.retornoAluguelMes || 0.005);
   const totalAluguelFidelidade = aluguelInicialFidelidade * (form.prazoGrupo - form.parcelasPagasAtéContemplar);
   const pctInqFidelidade = Math.min(Math.max(Math.round((totalAluguelFidelidade / custoTotalFidelidade) * 100), 1), 99);
   const pctCompFidelidade = 100 - pctInqFidelidade;
-  const valorImovelFimFidelidade = resultadosFidelidade.creditoDaCarta * Math.pow(1 + (form.correcaoImovelAno || 0.06), form.prazoGrupo / 12);
+  const valorImovelFimFidelidade = resultadosFidelidade.creditoDaCarta * Math.pow(1 + (form.correcaoImovelAno || 0.06), (form.prazoGrupo - resultadosFidelidade.parcelaContemplacao) / 12);
   const patrimonioLiquidoFidelidade = valorImovelFimFidelidade - custoTotalFidelidade;
 
   // CDB Time Accumulation
@@ -1340,6 +1340,16 @@ export default function PropostaPage() {
                   <div id="b-fincmp">
                     <div className="fin-dest" style={{ marginTop: '10px' }}>
                       <div className="fin-dest-title font-sans">Por que o consórcio supera o financiamento bancário?</div>
+                      <div className="col2" style={{ marginBottom: '7px' }}>
+                        <div className="ic">
+                          <div className="l font-sans">Crédito considerado</div>
+                          <div className="v font-display">{formatBRL(finResultadosSorteio.valorImovel)}</div>
+                        </div>
+                        <div className="ic">
+                          <div className="l font-sans">Entrada no financiamento ({(inputsFin.percentualEntrada || 20)}%)</div>
+                          <div className="v font-display">{formatBRL(finResultadosSorteio.entrada)}</div>
+                        </div>
+                      </div>
                       <div className="ig3">
                         <div className="ic">
                           <div className="l font-sans">Parcela inicial — financiamento SAC</div>
