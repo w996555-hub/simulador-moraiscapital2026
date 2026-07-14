@@ -123,31 +123,38 @@ export default function PropostaPage() {
   let resultadosFidelidade = resultados;
   let finResultadosFidelidade = finResultados;
 
-  try {
-    resultadosSorteio = calcular({
-      ...form,
-      tipoLance: 'SORTEIO',
-      valorLanceLivre: 0,
-      percentualLanceTotal: 0,
-      usaEmbutido: 'NÃO'
-    });
-    const creditoLiquidoSorteio = resultadosSorteio.creditoDaCarta - (resultadosSorteio.boletoLanceLivre || 0);
-    finResultadosSorteio = calcularFinanciamento(creditoLiquidoSorteio, inputsFin);
-  } catch (e) {
-    console.error("Erro ao calcular cenário Sorteio:", e);
+  const isActiveSorteio = form.tipoLance === 'SORTEIO';
+  const isActiveFidelidade = form.tipoLance === 'FIDELIDADE';
+
+  if (!isActiveSorteio) {
+    try {
+      resultadosSorteio = calcular({
+        ...form,
+        tipoLance: 'SORTEIO',
+        valorLanceLivre: 0,
+        percentualLanceTotal: 0,
+        usaEmbutido: 'NÃO'
+      });
+      const creditoLiquidoSorteio = resultadosSorteio.creditoDaCarta - (resultadosSorteio.boletoLanceLivre || 0);
+      finResultadosSorteio = calcularFinanciamento(creditoLiquidoSorteio, inputsFin);
+    } catch (e) {
+      console.error("Erro ao calcular cenário Sorteio:", e);
+    }
   }
 
-  try {
-    resultadosFidelidade = calcular({
-      ...form,
-      tipoLance: 'FIDELIDADE',
-      percentualLanceTotal: 0.3,
-      usaEmbutido: 'SIM'
-    });
-    const creditoLiquidoFidelidade = resultadosFidelidade.creditoDaCarta - (resultadosFidelidade.boletoLanceLivre || 0);
-    finResultadosFidelidade = calcularFinanciamento(creditoLiquidoFidelidade, inputsFin);
-  } catch (e) {
-    console.error("Erro ao calcular cenário Fidelidade:", e);
+  if (!isActiveFidelidade) {
+    try {
+      resultadosFidelidade = calcular({
+        ...form,
+        tipoLance: 'FIDELIDADE',
+        percentualLanceTotal: form.percentualLanceTotal || 0.3,
+        usaEmbutido: form.usaEmbutido || 'SIM'
+      });
+      const creditoLiquidoFidelidade = resultadosFidelidade.creditoDaCarta - (resultadosFidelidade.boletoLanceLivre || 0);
+      finResultadosFidelidade = calcularFinanciamento(creditoLiquidoFidelidade, inputsFin);
+    } catch (e) {
+      console.error("Erro ao calcular cenário Fidelidade:", e);
+    }
   }
 
   const calcularCustoTotal = (res: any) => {
