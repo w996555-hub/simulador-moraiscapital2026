@@ -252,6 +252,10 @@ export default function PropostaPage() {
   // Formatting contact info
   const phoneFormatted = assessor.whatsapp || assessor.phone || '';
 
+  // Return display conditions (symmetrical rendering)
+  const showRetornoAoMesFinanceira = (resultadosSorteio?.retornoAoMes || 0) >= 0.005 && (resultadosFidelidade?.retornoAoMes || 0) >= 0.005;
+  const showRetornoAoMesAplicacao = (resultadosSorteio?.retornoAoMes || 0) >= 0.005 && (resultadosFidelidade?.retornoAoMes || 0) >= 0.005;
+
   return (
     <div className="font-sans text-[#111] antialiased">
       <style>{`
@@ -1063,7 +1067,7 @@ export default function PropostaPage() {
         <div id="tela-doc">
           <div className="toolbar no-print">
             <button className="btn-voltar font-sans" onClick={handleVoltar}>← Voltar</button>
-            <span className="tinfo font-sans">Proposta <strong>#{id?.toUpperCase()}</strong> · {dataProposta}</span>
+            <span className="tinfo font-sans">Proposta Comercial · {dataProposta}</span>
             <button className="btn-print font-sans" onClick={() => window.print()}>Imprimir / PDF</button>
           </div>
           
@@ -1074,7 +1078,6 @@ export default function PropostaPage() {
                 <div className="hdr-sub font-sans">Estratégia patrimonial com consórcio</div>
               </div>
               <div className="hdr-meta font-sans">
-                <div><span className="pid">#{id?.toUpperCase()}</span></div>
                 <div>{dataProposta}</div>
                 <div>Cliente: <strong style={{ color: '#111' }}>{lead}</strong></div>
                 <div>Corretor: <strong style={{ color: '#111' }}>{assessor.nome}</strong></div>
@@ -1120,9 +1123,9 @@ export default function PropostaPage() {
                       <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosSorteio.desembolso + (resultadosSorteio.boletoLanceLivre || 0))}</div></div>
                       <div className="ck"><div className="l font-sans">Crédito da carta</div><div className="v font-display">{formatBRL(resultadosSorteio.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor de revenda estimado ({(form.percentualRecompra * 100).toFixed(0)}%)</div><div className="v red font-display">{formatBRL(valorRevendaSorteio)}</div></div>
-                      {resultadosSorteio.retornoAoMes >= 0.005 && (
-                        <div className="ck"><div className="l font-sans">Retorno ao mês</div><div className="v red font-display">{(resultadosSorteio.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
-                      )}
+                       {showRetornoAoMesFinanceira && (
+                         <div className="ck"><div className="l font-sans">Retorno ao mês</div><div className="v red font-display">{(resultadosSorteio.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
+                       )}
                       <div className="ck dark"><div className="l font-sans">Retorno total</div><div className="v font-display">{(resultadosSorteio.retornoTotalPercent * 100).toFixed(1)}%</div></div>
                     </div>
                   </div>
@@ -1137,9 +1140,9 @@ export default function PropostaPage() {
                       <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosFidelidade.desembolso + (resultadosFidelidade.boletoLanceLivre || 0))}</div></div>
                       <div className="ck"><div className="l font-sans">Crédito da carta</div><div className="v font-display">{formatBRL(resultadosFidelidade.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor de revenda estimado ({(form.percentualRecompra * 100).toFixed(0)}%)</div><div className="v red font-display">{formatBRL(valorRevendaFidelidade)}</div></div>
-                      {resultadosFidelidade.retornoAoMes >= 0.005 && (
-                        <div className="ck"><div className="l font-sans">Retorno ao mês</div><div className="v red font-display">{(resultadosFidelidade.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
-                      )}
+                       {showRetornoAoMesFinanceira && (
+                         <div className="ck"><div className="l font-sans">Retorno ao mês</div><div className="v red font-display">{(resultadosFidelidade.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
+                       )}
                       <div className="ck dark"><div className="l font-sans">Retorno total</div><div className="v font-display">{(resultadosFidelidade.retornoTotalPercent * 100).toFixed(1)}%</div></div>
                     </div>
                   </div>
@@ -1197,9 +1200,9 @@ export default function PropostaPage() {
                       <div className="ck"><div className="l font-sans">Crédito da carta (aplicado)</div><div className="v font-display">{formatBRL(resultadosSorteio.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor corrigido estimado</div><div className="v red font-display">{formatBRL(resultadosSorteio.valorCorrigidoAplicacao)}</div></div>
                       <div className="ck"><div className="l font-sans">Lucro líquido estimado</div><div className="v font-display">{formatBRL(resultadosSorteio.lucroLiquidoAplicacao)}</div></div>
-                      {resultadosSorteio.retornoAoMes >= 0.005 && (
-                        <div className="ck dark"><div className="l font-sans">Retorno ao mês</div><div className="v font-display">{(resultadosSorteio.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
-                      )}
+                       {showRetornoAoMesAplicacao && (
+                         <div className="ck dark"><div className="l font-sans">Retorno ao mês</div><div className="v font-display">{(resultadosSorteio.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
+                       )}
                     </div>
                   </div>
                   
@@ -1213,7 +1216,7 @@ export default function PropostaPage() {
                       <div className="ck"><div className="l font-sans">Crédito da carta (aplicado)</div><div className="v font-display">{formatBRL(resultadosFidelidade.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor corrigido estimado</div><div className="v red font-display">{formatBRL(resultadosFidelidade.valorCorrigidoAplicacao)}</div></div>
                       <div className="ck"><div className="l font-sans">Lucro líquido estimado</div><div className="v font-display">{formatBRL(resultadosFidelidade.lucroLiquidoAplicacao)}</div></div>
-                      {resultadosFidelidade.retornoAoMes >= 0.005 && (
+                      {showRetornoAoMesAplicacao && (
                         <div className="ck dark"><div className="l font-sans">Retorno ao mês</div><div className="v font-display">{(resultadosFidelidade.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
                       )}
                     </div>
@@ -1340,7 +1343,7 @@ export default function PropostaPage() {
                       <div className="ig3">
                         <div className="ic">
                           <div className="l font-sans">Parcela inicial — financiamento SAC</div>
-                          <div className="v red font-display">{formatBRL(finResultadosSorteio.primeiraParcela)} / mês</div>
+                          <div className="v red font-display">{formatBRL(finResultadosSorteio.parcelaInicialFin)} / mês</div>
                         </div>
                         <div className="ic">
                           <div className="l font-sans">Parcela inicial — consórcio (sorteio)</div>
@@ -1348,7 +1351,7 @@ export default function PropostaPage() {
                         </div>
                         <div className="ic">
                           <div className="l font-sans">Diferença na parcela inicial</div>
-                          <div className="v font-display">− {formatBRL(finResultadosSorteio.primeiraParcela - meiaParcelaSorteio)}</div>
+                          <div className="v font-display">− {formatBRL(finResultadosSorteio.parcelaInicialFin - meiaParcelaSorteio)}</div>
                         </div>
                       </div>
                       <div className="econ-box">
@@ -1396,7 +1399,7 @@ export default function PropostaPage() {
             </div>
             
             <div className="footer">
-              <div className="fb font-sans"><strong>MORAIS CAPITAL</strong> · Proposta #{id?.toUpperCase()}</div>
+              <div className="fb font-sans"><strong>MORAIS CAPITAL</strong> · Proposta Comercial</div>
               <div className="fc font-sans">{assessor.nome} · {phoneFormatted} · {dataProposta}</div>
             </div>
           </div>
