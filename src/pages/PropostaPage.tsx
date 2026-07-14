@@ -62,6 +62,12 @@ export default function PropostaPage() {
             if (view.includes('apl')) initialSels.add('apl');
             if (view.includes('pat')) initialSels.add('pat');
             setSels(initialSels);
+
+            // Skip config screen if assessor is not logged in
+            const isAssessor = !!sessionStorage.getItem('usuario');
+            if (!isAssessor) {
+              setShowDoc(true);
+            }
           } else {
             setError(resData.erro || "Proposta não encontrada no banco de dados.");
           }
