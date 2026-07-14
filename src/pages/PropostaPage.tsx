@@ -1110,7 +1110,7 @@ export default function PropostaPage() {
                       <div className="ch-sub font-sans">Sem lance</div>
                     </div>
                     <div className="col-body">
-                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosSorteio.desembolso)}</div></div>
+                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosSorteio.desembolso + (resultadosSorteio.boletoLanceLivre || 0))}</div></div>
                       <div className="ck"><div className="l font-sans">Crédito da carta</div><div className="v font-display">{formatBRL(resultadosSorteio.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor de revenda estimado ({(form.percentualRecompra * 100).toFixed(0)}%)</div><div className="v red font-display">{formatBRL(valorRevendaSorteio)}</div></div>
                       {resultadosSorteio.retornoAoMes >= 0.005 && (
@@ -1127,7 +1127,7 @@ export default function PropostaPage() {
                       <div className="ch-sub font-sans">Lance 30%</div>
                     </div>
                     <div className="col-body">
-                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosFidelidade.desembolso)}</div></div>
+                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosFidelidade.desembolso + (resultadosFidelidade.boletoLanceLivre || 0))}</div></div>
                       <div className="ck"><div className="l font-sans">Crédito da carta</div><div className="v font-display">{formatBRL(resultadosFidelidade.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor de revenda estimado ({(form.percentualRecompra * 100).toFixed(0)}%)</div><div className="v red font-display">{formatBRL(valorRevendaFidelidade)}</div></div>
                       {resultadosFidelidade.retornoAoMes >= 0.005 && (
@@ -1186,7 +1186,7 @@ export default function PropostaPage() {
                       <div className="ch-sub font-sans">Sem lance</div>
                     </div>
                     <div className="col-body">
-                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosSorteio.desembolso)}</div></div>
+                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosSorteio.desembolso + (resultadosSorteio.boletoLanceLivre || 0))}</div></div>
                       <div className="ck"><div className="l font-sans">Crédito da carta (aplicado)</div><div className="v font-display">{formatBRL(resultadosSorteio.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor corrigido estimado</div><div className="v red font-display">{formatBRL(resultadosSorteio.valorCorrigidoAplicacao)}</div></div>
                       <div className="ck"><div className="l font-sans">Lucro líquido estimado</div><div className="v font-display">{formatBRL(resultadosSorteio.lucroLiquidoAplicacao)}</div></div>
@@ -1202,7 +1202,7 @@ export default function PropostaPage() {
                       <div className="ch-sub font-sans">Lance 30%</div>
                     </div>
                     <div className="col-body">
-                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosFidelidade.desembolso)}</div></div>
+                      <div className="ck"><div className="l font-sans">Valor investido até a contemplação</div><div className="v font-display">{formatBRL(resultadosFidelidade.desembolso + (resultadosFidelidade.boletoLanceLivre || 0))}</div></div>
                       <div className="ck"><div className="l font-sans">Crédito da carta (aplicado)</div><div className="v font-display">{formatBRL(resultadosFidelidade.creditoDaCarta)}</div></div>
                       <div className="ck"><div className="l font-sans">Valor corrigido estimado</div><div className="v red font-display">{formatBRL(resultadosFidelidade.valorCorrigidoAplicacao)}</div></div>
                       <div className="ck"><div className="l font-sans">Lucro líquido estimado</div><div className="v font-display">{formatBRL(resultadosFidelidade.lucroLiquidoAplicacao)}</div></div>
