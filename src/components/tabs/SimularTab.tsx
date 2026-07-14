@@ -805,7 +805,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.id) {
-          window.open(`https://simulacao.moraiscapital.com.br/proposta/${data.id}`, '_blank');
+          window.open(`${window.location.origin}/proposta/${data.id}`, '_blank');
           setShowNameModal(false);
         } else {
           setModalError(data.erro || "Falha ao salvar proposta no servidor.");
