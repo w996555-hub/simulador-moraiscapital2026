@@ -1207,8 +1207,9 @@ export default function PropostaPage() {
                       <div className="ck"><div className="l font-sans">Valor corrigido estimado</div><div className="v red font-display">{formatBRL(resultadosSorteio.valorCorrigidoAplicacao)}</div></div>
                       <div className="ck"><div className="l font-sans">Lucro líquido estimado</div><div className="v font-display">{formatBRL(resultadosSorteio.lucroLiquidoAplicacao)}</div></div>
                        {showRetornoAoMesAplicacao && (
-                         <div className="ck dark"><div className="l font-sans">Retorno ao mês</div><div className="v font-display">{(resultadosSorteio.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
+                         <div className="ck"><div className="l font-sans">Retorno ao mês</div><div className="v font-display">{(resultadosSorteio.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
                        )}
+                       <div className="ck dark"><div className="l font-sans">Retorno total</div><div className="v font-display">{(resultadosSorteio.retornoAplicacaoPercent * 100).toFixed(3).replace('.', ',')}%</div></div>
                     </div>
                   </div>
                   
@@ -1223,12 +1224,12 @@ export default function PropostaPage() {
                       <div className="ck"><div className="l font-sans">Valor corrigido estimado</div><div className="v red font-display">{formatBRL(resultadosFidelidade.valorCorrigidoAplicacao)}</div></div>
                       <div className="ck"><div className="l font-sans">Lucro líquido estimado</div><div className="v font-display">{formatBRL(resultadosFidelidade.lucroLiquidoAplicacao)}</div></div>
                       {showRetornoAoMesAplicacao && (
-                        <div className="ck dark"><div className="l font-sans">Retorno ao mês</div><div className="v font-display">{(resultadosFidelidade.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
+                        <div className="ck"><div className="l font-sans">Retorno ao mês</div><div className="v font-display">{(resultadosFidelidade.retornoAoMes * 100).toFixed(2)}% a.m.</div></div>
                       )}
+                      <div className="ck dark"><div className="l font-sans">Retorno total</div><div className="v font-display">{(resultadosFidelidade.retornoAplicacaoPercent * 100).toFixed(3).replace('.', ',')}%</div></div>
                     </div>
                   </div>
                 </div>
-                <div className="snote font-sans">Projeção com come-cotas semestral (IR 15%). O consórcio viabiliza o acesso ao crédito a custo muito abaixo do mercado — a diferença entre o custo de entrada e o volume aplicado é a vantagem estrutural da operação. Taxa de investimento comparativo utilizada: {taxaInvest.toFixed(2)}% a.m.</div>
               </div>
             )}
 
