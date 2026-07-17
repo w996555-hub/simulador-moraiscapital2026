@@ -1085,7 +1085,7 @@ export default function PropostaPage() {
           <div className="toolbar no-print">
             <button className="btn-voltar font-sans" onClick={handleVoltar}>← Voltar</button>
             <span className="tinfo font-sans">Proposta Comercial · {dataProposta}</span>
-            <button className="btn-print font-sans" onClick={() => window.print()}>Imprimir / PDF</button>
+            <button className="btn-print font-sans" onClick={(e) => { e.currentTarget.blur(); setTimeout(() => window.print(), 150); }}>Imprimir / PDF</button>
           </div>
           
           <div className="a4">
