@@ -1378,8 +1378,7 @@ export default function PropostaPage() {
                         </div>
                         <div className="det font-sans">
                           Financiamento: {formatBRL(finResultadosSorteio.custoTotalFinanciamento)} total<br />
-                          Consórcio: {formatBRL(custoTotalSorteio)} total<br />
-                          <strong style={{ color: '#fff' }}>Você paga quase a metade</strong>
+                          Consórcio: {formatBRL(custoTotalSorteio)} total
                         </div>
                       </div>
                       <div className="snote font-sans" style={{ marginTop: '8px' }}>Comparativo com SAC {(inputsFin.taxaJuros || 10.74).toFixed(2)}% a.a. + TR, prazo {(inputsFin.prazoFin / 12).toFixed(0)} anos, {(inputsFin.percentualEntrada || 20)}% de entrada. O consórcio não tem juros — o custo é a taxa administrativa.</div>
