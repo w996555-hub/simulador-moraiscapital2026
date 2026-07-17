@@ -971,17 +971,25 @@ export default function PropostaPage() {
         
         /* Print Styles */
         @media print {
-          body {
+          html, body {
             background: #fff !important;
             color: #111 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           #tela-sel {
             display: none !important;
           }
           #tela-doc {
-            display: flex !important;
+            display: block !important;
             background: #fff !important;
             padding: 0 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
           }
           .toolbar {
             display: none !important;
@@ -991,6 +999,9 @@ export default function PropostaPage() {
             width: 100% !important;
             box-shadow: none !important;
             padding: 36px 44px 44px !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
           }
           @page {
             size: A4;
