@@ -357,11 +357,11 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
 
   return (
     <div className="flex h-screen overflow-hidden flex-col bg-background">
-      <header className="shrink-0 gradient-primary px-6 shadow-[0_4px_20px_-8px_rgba(180,20,30,0.45)] flex items-center h-16 relative z-20">
-        <div className="h-8 mr-8 flex items-center shrink-0">
+      <header className="shrink-0 gradient-primary px-3 md:px-6 shadow-[0_4px_20px_-8px_rgba(180,20,30,0.45)] flex items-center h-16 relative z-20">
+        <div className="h-8 mr-3 md:mr-8 flex items-center shrink-0">
           <img src="/logo-white.png" alt="Morais Capital" className="h-8 w-auto object-contain" />
         </div>
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto no-scrollbar md:flex-none md:overflow-visible">
           {['simular', 'financiamento', 'cdb', 'resumo']
             .filter(tab => tab !== 'resumo' || visibilidadeCampos['resumoTab'] !== false)
             .map((tab) => (
@@ -371,7 +371,7 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
                   setActiveTab(tab);
                   setSimularView('form');
                 }}
-                className={`px-4 py-4 text-[13px] font-medium capitalize relative transition-colors ${
+                className={`shrink-0 whitespace-nowrap px-2.5 md:px-4 py-4 text-[13px] font-medium capitalize relative transition-colors ${
                   activeTab === tab ? 'text-white' : 'text-white/70 hover:bg-white/5 rounded-lg'
                 }`}
               >
@@ -380,30 +380,31 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
               </button>
             ))}
         </nav>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-1.5 md:gap-4 shrink-0">
           {isAdmin && (
-            <button 
-              onClick={() => navigateTo('/admin')} 
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+            <button
+              onClick={() => navigateTo('/admin')}
+              className="px-2 md:px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all shrink-0"
             >
-              Painel ADM
+              <span className="md:hidden">ADM</span>
+              <span className="hidden md:inline">Painel ADM</span>
             </button>
           )}
-          
+
           {/* Avatar e Nome do Usuário Logado */}
-          <button 
+          <button
             onClick={() => {
               setPerfilErro('');
               setPerfilSucesso('');
               setShowPerfilModal(true);
-            }} 
-            className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white text-left group shrink-0"
+            }}
+            className="flex items-center gap-2.5 px-1.5 md:px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white text-left group shrink-0"
             title="Ver Perfil"
           >
             {usuario?.foto_base64 || usuario?.foto_base64 || usuario?.foto_url ? (
-              <img 
-                src={usuario.foto_base64 || usuario.foto_url} 
-                alt={usuario.nome} 
+              <img
+                src={usuario.foto_base64 || usuario.foto_url}
+                alt={usuario.nome}
                 className="w-7 h-7 rounded-full object-cover border border-white/20 shrink-0"
               />
             ) : (
@@ -411,14 +412,14 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
                 {usuario?.nome ? getInitials(usuario.nome) : 'US'}
               </div>
             )}
-            <span className="text-xs font-semibold mr-1 select-none">
+            <span className="hidden md:inline text-xs font-semibold mr-1 select-none">
               Olá, {usuario?.nome?.split(' ')[0] || 'Assessor'}
             </span>
           </button>
 
-          <button 
-            onClick={handleLogout} 
-            className="flex items-center justify-center h-9 w-9 bg-white/5 border border-white/15 rounded-full text-white hover:bg-white/10 transition-colors"
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center h-9 w-9 bg-white/5 border border-white/15 rounded-full text-white hover:bg-white/10 transition-colors shrink-0"
             title="Sair"
           >
             <LogOut size={16} />
@@ -426,11 +427,11 @@ export default function Index({ navigateTo }: { navigateTo: (path: string) => vo
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-8 py-8 bg-background nice-scroll relative">
+      <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 bg-background nice-scroll relative">
         <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center justify-between animate-in fade-in duration-500">
+          <div className="flex items-center justify-between flex-wrap gap-2 animate-in fade-in duration-500">
             <div>
-              <h2 className="text-[32px] font-bold capitalize text-foreground leading-tight">
+              <h2 className="text-2xl md:text-[32px] font-bold capitalize text-foreground leading-tight">
                 {activeTab}
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">Painel analítico</p>

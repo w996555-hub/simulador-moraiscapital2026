@@ -84,6 +84,15 @@
   }
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* PDF Export and Print Utilities */
 .pdf-only {
   display: none !important;

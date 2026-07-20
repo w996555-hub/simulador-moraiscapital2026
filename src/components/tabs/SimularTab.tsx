@@ -838,7 +838,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
           </div>
 
           {/* Grid de Inputs (6 colunas em xl, 4 em lg, 3 em md, 2 em mobile) */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-5 gap-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-5 gap-y-4">
             
             {isFieldVisible('credito') && (
               <CurrencyInput 

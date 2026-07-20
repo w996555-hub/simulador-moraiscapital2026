@@ -137,7 +137,7 @@ export default function FinanciamentoTab({
 
         {/* Menu Colapsável de Configurações Avançadas */}
         {showConfig && (
-          <div className="p-6 border-b border-border bg-muted/20 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-5 gap-y-4 animate-in slide-in-from-top duration-300">
+          <div className="p-4 md:p-6 border-b border-border bg-muted/20 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-5 gap-y-4 animate-in slide-in-from-top duration-300">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Prazo Financiamento</label>
               <div className="relative">
