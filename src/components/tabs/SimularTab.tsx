@@ -2226,7 +2226,7 @@ export default function SimularTab({ form, setForm, resultados, setResultados, l
             
             <input
               type="text"
-              placeholder="Nome completo do lead (ex: João Silva)"
+              placeholder="Nome completo (ex: João Silva)"
               value={clienteNameInput}
               onChange={e => {
                 setClienteNameInput(e.target.value);
